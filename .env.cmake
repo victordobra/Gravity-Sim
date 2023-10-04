@@ -1,0 +1,9 @@
+# CMake info
+set(CMAKE_MIN_VERSION 3.0.0)
+
+# Project info
+set(PROJECT_NAME Gravity-Sim)
+
+set(PROJECT_VERSION_MAJOR 1)
+set(PROJECT_VERSION_MINOR 0)
+set(PROJECT_VERSION_PATCH 0)
