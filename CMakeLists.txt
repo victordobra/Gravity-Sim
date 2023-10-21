@@ -42,7 +42,7 @@ message(STATUS "Project executable created successfully.")
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 	# Add the include directories for Windows
-	target_include_directories(${PROJECT_NAME} PUBLIC $ENV{VULKAN_SDK}/Include${PROJECT_SOURCE_DIR}/info ${PROJECT_SOURCE_DIR}/src)
+	target_include_directories(${PROJECT_NAME} PUBLIC $ENV{VULKAN_SDK}/Include ${PROJECT_SOURCE_DIR}/info ${PROJECT_SOURCE_DIR}/src)
 	message(STATUS "Project include directories added.")
 
 	if(${TARGET_ARCH} STREQUAL "x86_64")

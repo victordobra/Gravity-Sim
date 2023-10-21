@@ -31,10 +31,10 @@ namespace gsim {
 		/// @return A const pointer to the array of listeners.
 		const Listener* GetListeners() const;
 
-		/// @brief Triggers the event's calling all listener callbacks.
+		/// @brief Calls the event's listener callbacks.
 		/// @param params The params to be used when calling the listener callbacks.
 		/// @param returns A pointer to an array where the function will store the returns of the 
-		void TriggerEvent(void* params, void** returns = nullptr);
+		void CallEvent(void* params, void** returns = nullptr);
 
 		/// @brief Destroys the event.
 		~Event() = default;

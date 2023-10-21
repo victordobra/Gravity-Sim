@@ -18,7 +18,7 @@ namespace gsim {
 		return listeners.data();
 	}
 
-	void Event::TriggerEvent(void* params, void** returns) {
+	void Event::CallEvent(void* params, void** returns) {
 		// Loop through every listener
 		for(Listener listener : listeners) {
 			// Trigger the listener callback
