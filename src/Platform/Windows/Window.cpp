@@ -14,6 +14,7 @@ namespace gsim {
 	static HINSTANCE hInstance;
 	static ATOM winClassAtom;
 	static HWND hWindow;
+	static bool windowDestroyed = false;
 
 	static Event moveEvent;
 	static Event resizeEvent;
@@ -59,6 +60,8 @@ namespace gsim {
 		
 		// Show the window
 		ShowWindow(hWindow, SW_SHOWDEFAULT);
+
+		GSIM_LOG_INFO("Creates Win32 window");
 	}
 
 	static LRESULT CALLBACK WinProc(_In_ HWND hWnd, _In_ UINT message, _In_ WPARAM wParam, _In_ LPARAM lParam) {
@@ -92,6 +95,11 @@ namespace gsim {
 			::DestroyWindow(hWindow);
 
 			break;
+		case WM_DESTROY:
+			// Remember that the window was destroyed
+			windowDestroyed = true;
+
+			break;
 		}
 
 		return DefWindowProcA(hWnd, message, wParam, lParam);
@@ -111,13 +119,9 @@ namespace gsim {
 		while(PeekMessageA(&message, hWindow, 0, 0, PM_REMOVE)) {
 			// Dispatch the message
 			DispatchMessageA(&message);
-
-			// Exit the function if the dispatched message was a WM_DESTROY message
-			if(message.message == WM_DESTROY)
-				return false;
 		}
 
-		return true;
+		return !windowDestroyed;
 	}
 
 	Event& GetWindowMoveEvent() {
