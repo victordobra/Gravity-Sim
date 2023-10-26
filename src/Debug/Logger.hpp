@@ -69,7 +69,7 @@ namespace gsim {
 #ifdef GSIM_LOG_DEBUG_ENABLED
 /// @brief Logs a debug message.
 /// @param format The message string format.
-#define GSIM_LOG_DEBUG(format, ...) gsim::LogMessage(wfe::LOG_LEVEL_DEBUG, format, ##__VA_ARGS__)
+#define GSIM_LOG_DEBUG(format, ...) gsim::LogMessage(gsim::LOG_LEVEL_DEBUG, format, ##__VA_ARGS__)
 #else
 /// @brief Logs a debug message.
 /// @param format The message string format.

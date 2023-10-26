@@ -9,6 +9,22 @@
 #endif
 
 namespace gsim {
+	/// @brief A struct containing general information about the window.
+	struct WindowInfo {
+		/// @brief The window's X position.
+		int32_t posX;
+		/// @brief The window's Y position.
+		int32_t posY;
+		/// @brief The window's width.
+		uint32_t width;
+		/// @brief The window's height.
+		uint32_t height;
+		/// @brief True if the window is maximized, otherwise false.
+		bool isMaximized;
+		/// @brief True if the window is minimized, otherwise false.
+		bool isMinimized;
+	};
+
 #if defined(GSIM_PLATFORM_WINDOWS)
 	/// @brief A struct containing Windows-specific window info.
 	struct WindowPlatformInfo {
@@ -34,6 +50,14 @@ namespace gsim {
 		uint32_t newWidth;
 		/// @brief The new height of the window.
 		uint32_t newHeight;
+		/// @brief True if the window was maximized, otherwise false.
+		bool windowMaximized;
+		/// @brief True if the window was unmaximized, otherwise false.
+		bool windowUnmaximized;
+		/// @brief True if the window was minimized, otherwise false.
+		bool windowMinimized;
+		/// @brief True if the window was unminimized, otherwise false.
+		bool windowUnminimized;
 	};
 
 	/// @brief Creates the program's window.
@@ -51,7 +75,10 @@ namespace gsim {
 	/// @return A reference to the window's resize event.
 	Event& GetWindowResizeEvent();
 
-	/// @brief Returns the window's platform-specific info.
+	/// @brief Gets the window's general info.
+	/// @return A struct containing the window's general info.
+	WindowInfo GetWindowInfo();
+	/// @brief Gets the window's platform-specific info.
 	/// @return A struct containing the window's platform-specific info.
 	WindowPlatformInfo GetWindowPlatformInfo();
 }
