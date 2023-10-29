@@ -1,5 +1,6 @@
 #include "Renderer.hpp"
-#include "Utils/BuildInfo.hpp"
+#include "Manager/Parser.hpp"
+#include "Debug/Logger.hpp"
 #include "Core/Allocator.hpp"
 #include "Core/CommandPool.hpp"
 #include "Core/Device.hpp"
@@ -7,17 +8,10 @@
 #include "Core/SwapChain.hpp"
 
 namespace gsim {
-	// Constants
-#ifdef GSIM_BUILD_MODE_DEBUG
-	const bool DEBUG_ENABLED = true;
-#else
-	const bool DEBUG_ENABLED = false;
-#endif
-
 	// Public functions
 	void CreateVulkanRenderer() {
 		// Create the core components
-		CreateVulkanInstance(DEBUG_ENABLED);
+		CreateVulkanInstance(IsValidationEnabled());
 		CreateVulkanSurface();
 		CreateVulkanDevice();
 		CreateVulkanCommandPools();
@@ -30,5 +24,7 @@ namespace gsim {
 		DestroyVulkanDevice();
 		DestroyVulkanSurface();
 		DestroyVulkanInstance();
+
+		GSIM_LOG_INFO("Destroyed Vulkan renderer.");
 	}
 }

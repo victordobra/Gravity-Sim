@@ -68,30 +68,6 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 	message(STATUS "Project link libraries added.")
 endif()
 
-# Find all shaders in the project
-file(GLOB_RECURSE GLSL_SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.vert ${PROJECT_SOURCE_DIR}/src/*.frag)
-set(GLSL_VALIDATOR glslangValidator)
-list(LENGTH GLSL_SOURCE_FILES GLSL_COUNT)
-
-if(GLSL_COUNT EQUAL 0)
-	message(STATUS "No shaders found.")
-elseif(GLSL_COUNT EQUAL 1)
-	message(STATUS "1 shader found.")
-else()
-	message(STATUS "${GLSL_COUNT} shaders found.")
-endif()
-
-# Compile shaders
-foreach(GLSL ${GLSL_SOURCE_FILES})
-	get_filename_component(GLSL_NAME ${GLSL} NAME)
-	set(SPIRV "${PROJECT_SOURCE_DIR}/assets/shaders/${GLSL_NAME}.spv")
-	add_custom_command(OUTPUT ${SPIRV} COMMAND ${GLSL_VALIDATOR} ${GLSL} -V -o ${SPIRV} DEPENDS ${GLSL})
-	list(APPEND SPIRV_BINARY_FILES ${SPIRV})
-endforeach(GLSL)
-
-add_custom_target(SHADERS ALL DEPENDS ${SPIRV_BINARY_FILES})
-message(STATUS "Shader compile step added successfully.")
-
 # Add CPack components
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
