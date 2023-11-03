@@ -2,6 +2,7 @@
 #include "Allocator.hpp"
 #include "Device.hpp"
 #include "Instance.hpp"
+#include "RenderPass.hpp"
 #include "Platform/Window.hpp"
 #include "Debug/Logger.hpp"
 #include <stdint.h>
@@ -25,6 +26,7 @@ namespace gsim {
 	static std::vector<VkPresentModeKHR> supportedSurfacePresentModes;
 
 	static VulkanSwapChainSettings swapChainSettings;
+	static VkExtent2D swapChainExtent;
 	static VkSwapchainKHR swapChain;
 	static std::vector<VulkanSwapChainImage> swapChainImages;
 
@@ -84,7 +86,6 @@ namespace gsim {
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(GetVulkanPhysicalDevice(), surface, &surfaceCapabilities);
 
 		// Set the swap chain's extent
-		VkExtent2D swapChainExtent;
 		if(surfaceCapabilities.currentExtent.width == 0xffffffff || surfaceCapabilities.currentExtent.height == 0xffffffff) {
 			// Set the swap chain extent to the window's size
 			WindowInfo windowInfo = GetWindowInfo();
@@ -177,6 +178,7 @@ namespace gsim {
 
 		// Copy the images to the swap chain image vector
 		swapChainImages.resize(swapChainImageCount);
+		swapChainImages.shrink_to_fit();
 		for(uint32_t i = 0; i != swapChainImageCount; ++i)
 			swapChainImages[i].image = swapChainImagesArr[i];
 		
@@ -202,19 +204,55 @@ namespace gsim {
 		createInfo.subresourceRange.layerCount = 1;
 
 		// Create the image views
-		for(uint32_t i = 0; i != swapChainImageCount; ++i) {
+		for(auto& swapChainImage : swapChainImages) {
 			// Set the target image in the create info
-			createInfo.image = swapChainImages[i].image;
+			createInfo.image = swapChainImage.image;
 			
 			// Create the image view
-			VkResult result = vkCreateImageView(GetVulkanDevice(), &createInfo, GetVulkanAllocCallbacks(), &(swapChainImages[i].imageView));
+			VkResult result = vkCreateImageView(GetVulkanDevice(), &createInfo, GetVulkanAllocCallbacks(), &swapChainImage.imageView);
 			if(result != VK_SUCCESS)
 				GSIM_LOG_FATAL("Failed to create Vulkan swap chain image view! Error code: %s", string_VkResult(result));
 		} 
 	}
+	static void CreateFramebuffers() {
+		// Exit the function if the swap chain wasn't created due to the window being minimized
+		if(!swapChain)
+			return;
+
+		// Set the framebuffer create info
+		VkFramebufferCreateInfo createInfo;
+
+		createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		createInfo.pNext = nullptr;
+		createInfo.flags = 0;
+		createInfo.renderPass = GetVulkanRenderPass();
+		createInfo.attachmentCount = 1;
+		createInfo.width = swapChainExtent.width;
+		createInfo.height = swapChainExtent.height;
+		createInfo.layers = 1;
+
+		// Create the framebuffers
+		for(auto& swapChainImage : swapChainImages) {
+			// Set the framebuffer attachment
+			createInfo.pAttachments = &swapChainImage.imageView;
+
+			// Create the framebuffer
+			VkResult result = vkCreateFramebuffer(GetVulkanDevice(), &createInfo, GetVulkanAllocCallbacks(), &swapChainImage.framebuffer);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to create Vulkan swap chain framebuffer! Error code: %s", string_VkResult(result));
+		}
+	}
+
 	static void DestroySwapChainImages() {
+		// Exit the function if the swap chain wasn't created due to the window being minimized
+		if(!swapChain)
+			return;
+
 		// Destroy the swap chain's images
 		for(auto& swapChainImage : swapChainImages) {
+			// Destroy the framebuffer
+			vkDestroyFramebuffer(GetVulkanDevice(), swapChainImage.framebuffer, GetVulkanAllocCallbacks());
+
 			// Destroy the image view
 			vkDestroyImageView(GetVulkanDevice(), swapChainImage.imageView, GetVulkanAllocCallbacks());
 		}
@@ -290,9 +328,13 @@ namespace gsim {
 		GetSwapChainSupportDetails();
 		SetSwapChainDefaultSettings();
 
+		// Create the render pass
+		CreateVulkanRenderPass();
+
 		// Create the swap chain and its components
 		CreateSwapChain(VK_NULL_HANDLE);
 		GetSwapChainImages();
+		CreateFramebuffers();
 
 		// Add the resize event callback
 		GetWindowResizeEvent().AddListener(ResizeEventCallback);
@@ -305,6 +347,9 @@ namespace gsim {
 		// Destroy the swap chain, if it exists
 		if(swapChain)
 			vkDestroySwapchainKHR(GetVulkanDevice(), swapChain, GetVulkanAllocCallbacks());
+		
+		// Destroy the render pass
+		DestroyVulkanRenderPass();
 	}
 	void RecreateVulkanSwapChain() {
 		// Destroy the swap chain's previous images
@@ -322,9 +367,10 @@ namespace gsim {
 
 		// Create the swap chain's remaining components
 		GetSwapChainImages();
+		CreateFramebuffers();
 	}
 
-	VulkanSwapChainSettings GetVulkanSwapChainSettings() {
+	const VulkanSwapChainSettings& GetVulkanSwapChainSettings() {
 		return swapChainSettings;
 	}
 	bool SetVulkanSwapChainSettings(const VulkanSwapChainSettings& newSettings) {
@@ -358,11 +404,15 @@ namespace gsim {
 		if(!presentModeFound)
 			return false;
 		
-		// The settings are supported; recreate the swap chain and exit the function
+		// The settings are supported; recreate the swap chain and render pass and exit the function
 		swapChainSettings = newSettings;
+		RecreateVulkanRenderPass();
 		RecreateVulkanSwapChain();
 
 		return true;
+	}
+	VkExtent2D GetVulkanSwapChainExtent() {
+		return swapChainExtent;
 	}
 
 	VkSwapchainKHR GetVulkanSwapChain() {

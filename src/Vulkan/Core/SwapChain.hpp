@@ -44,6 +44,8 @@ namespace gsim {
 		VkImage image;
 		/// @brief The handle of the color image's view.
 		VkImageView imageView;
+		/// @brief The handle of the swap chain image's framebuffer
+		VkFramebuffer framebuffer;
 	};
 
 	/// @brief Creates the Vulkan swap chain.
@@ -55,11 +57,14 @@ namespace gsim {
 
 	/// @brief Gets the Vulkan swap chain's settings.
 	/// @return A struct containing the swap chain's settings.
-	VulkanSwapChainSettings GetVulkanSwapChainSettings();
+	const VulkanSwapChainSettings& GetVulkanSwapChainSettings();
 	/// @brief Sets the Vulkan swap chain's new settings.
 	/// @param newSettings The swap chain's new settings.
 	/// @return True if the given settings are supported by the swap chain, otherwise false.
 	bool SetVulkanSwapChainSettings(const VulkanSwapChainSettings& newSettings);
+	/// @brief Gets the Vulkan swap chain's extent.
+	/// @return The Vulkan swap chain's extent.
+	VkExtent2D GetVulkanSwapChainExtent();
 
 	/// @brief Gets the Vulkan swap chain.
 	/// @return The handle of the Vulkan swap chain, or VK_NULL_HANDLE if the window is minimized and the swap chain doesn't exist.
