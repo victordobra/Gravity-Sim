@@ -1,11 +1,6 @@
 #include "Renderer.hpp"
 #include "Manager/Parser.hpp"
 #include "Debug/Logger.hpp"
-#include "Core/Allocator.hpp"
-#include "Core/CommandPool.hpp"
-#include "Core/Device.hpp"
-#include "Core/Instance.hpp"
-#include "Core/SwapChain.hpp"
 
 namespace gsim {
 	// Public functions

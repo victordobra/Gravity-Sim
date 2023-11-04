@@ -1,5 +1,13 @@
 #pragma once
 
+#include "Core/Allocator.hpp"
+#include "Core/CommandPool.hpp"
+#include "Core/Device.hpp"
+#include "Core/Instance.hpp"
+#include "Core/RenderPass.hpp"
+#include "Core/SwapChain.hpp"
+#include "Data/Points.hpp"
+
 namespace gsim {
 	/// @brief Creates the Vulkan renderer.
 	void CreateVulkanRenderer();
