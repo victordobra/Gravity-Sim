@@ -39,6 +39,7 @@ namespace gsim {
 	// Internal variables
 	static VkPhysicalDeviceProperties deviceProperties;
 	static VkPhysicalDeviceFeatures deviceFeatures;
+	static VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
 	static VulkanQueueFamilyIndices queueFamilies;
 	static std::vector<const char*> deviceExtensions;
 
@@ -277,9 +278,10 @@ namespace gsim {
 		return bestScore;
 	}
 	static void SetupPhysicalDevice() {
-		// Get the phyiscal device's properties, features and queue families
+		// Get the phyiscal device's properties
 		vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
 		vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &deviceMemoryProperties);
 		queueFamilies = GetQueueFamilies(physicalDevice);
 
 		// Load the physical device's extensions count
@@ -445,11 +447,26 @@ namespace gsim {
 	const VkPhysicalDeviceFeatures& GetVulkanPhysicalDeviceFeatures() {
 		return deviceFeatures;
 	}
+	const VkPhysicalDeviceMemoryProperties& GetVulkanPhysicalDeviceMemoryProperties() {
+		return deviceMemoryProperties;
+	}
 	const VulkanQueueFamilyIndices& GetVulkanDeviceQueueFamilyIndices() {
 		return queueFamilies;
 	}
 	const std::vector<const char*>& GetVulkanDeviceExtensions() {
 		return deviceExtensions;
+	}
+
+	uint32_t FindVulkanMemoryType(uint32_t startIndex, uint32_t typeBitmask, VkMemoryPropertyFlags properties) {
+		// Loop through every available memory type, starting at the given index
+		for(uint32_t i = startIndex; i != deviceMemoryProperties.memoryTypeCount; ++i) {
+			// Check if the current memory type supports all the given properties
+			if((typeBitmask & (1 << i)) && (deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+				return i;
+		}
+
+		// No supported memory format exists; return -1
+		return -1;
 	}
 
 	VkPhysicalDevice GetVulkanPhysicalDevice() {

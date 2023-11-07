@@ -31,12 +31,22 @@ namespace gsim {
 	/// @brief Gets the current Vulkan physical device's features.
 	/// @return A const reference to the struct containing all physical device features.
 	const VkPhysicalDeviceFeatures& GetVulkanPhysicalDeviceFeatures();
+	/// @brief Gets the current physical device's memory properties.
+	/// @return A const reference to the struct containing all physical device memory properties.
+	const VkPhysicalDeviceMemoryProperties& GetVulkanPhysicalDeviceMemoryProperties();
 	/// @brief Gets the current Vulkan device's used queue family indices.
 	/// @return A const reference to the struct containing all used queue family indices.
 	const VulkanQueueFamilyIndices& GetVulkanDeviceQueueFamilyIndices();
 	/// @brief Gets the current Vulkan device's udex extensions.
 	/// @return A const reference to a set containing all used extension names.
 	const std::vector<const char*>& GetVulkanDeviceExtensions();
+
+	/// @brief Finds the first supported memory type with the given properties.
+	/// @param startIndex The lowest possible index of the memory type.
+	/// @param typeBitmask The bitmask of allowed types.
+	/// @param properties The required properties of the memory type.
+	/// @return The index of the first supported memory type, or -1 if none is supported.
+	uint32_t FindVulkanMemoryType(uint32_t startIndex, uint32_t typeBitmask, VkMemoryPropertyFlags properties);
 
 	/// @brief Gets the current Vulkan physical device.
 	/// @return A handle to the current Vulkan physical device.

@@ -11,8 +11,14 @@ namespace gsim {
 		CreateVulkanDevice();
 		CreateVulkanCommandPools();
 		CreateVulkanSwapChain();
+
+		// Create the point buffers
+		CreatePointBuffers();
 	}
 	void DestroyVulkanRenderer() {
+		// Destroy the point buffer
+		DestroyPointBuffers();
+
 		// Destroy the core components
 		DestroyVulkanSwapChain();
 		DestroyVulkanCommandPools();
