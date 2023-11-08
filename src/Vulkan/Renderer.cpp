@@ -14,9 +14,11 @@ namespace gsim {
 
 		// Create the point buffers
 		CreatePointBuffers();
+		CreateVulkanSyncObjects();
 	}
 	void DestroyVulkanRenderer() {
 		// Destroy the point buffer
+		DestroyVulkanSyncObjects();
 		DestroyPointBuffers();
 
 		// Destroy the core components

@@ -7,6 +7,7 @@
 #include "Core/RenderPass.hpp"
 #include "Core/SwapChain.hpp"
 #include "Data/Points.hpp"
+#include "Data/SyncObjects.hpp"
 
 namespace gsim {
 	/// @brief Creates the Vulkan renderer.
