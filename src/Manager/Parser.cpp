@@ -6,6 +6,7 @@
 
 namespace gsim {
 	// Internal variables with default values set
+	size_t pointCount;
 	const char* pointInFileName = nullptr;
 	const char* pointOutFileName = nullptr;
 	const char* logFileName = nullptr;
@@ -24,7 +25,8 @@ namespace gsim {
 	static void WriteHelp() {
 		// Write the help
 		printf("Available parameters:\n"
-		"--points-in: The file containing all points to be simulated. Must be set.\n"
+		"--point-count: The number of points to simulate. Used only if --points-in is not set, in which the given number of points will start in a circular arrangement moving towards the center with random masses.\n"
+		"--points-in: The file containing all points to be simulated. Must be set if --point-count is not set.\n"
 		"--points-out: The file in which the final coordinates of the points will be written. Optional.\n"
 		"--log-file: The file in which all program logs will be stored. Optional.\n"
 		"--sim-interval: The time interval, in seconds, to use for calculating gravitational force. Defaulted to 1e-5.\n"
@@ -54,6 +56,22 @@ namespace gsim {
 		// Read the given args
 		for(int32_t i = 1; i != argc; ++i) {
 			// Check if the given argument is the name of a parameter
+			if(!strcmp(args[i], "--point-count")) {
+				// Check if this is the last argument
+				if(++i == argc) {
+					printf("Invalid args: parameter listed, but no value given!\nUse --help for a detailed list of all parameters and options.\n");
+					return false;
+				}
+
+				// Convert the current parameter to an integer
+				pointCount = (size_t)strtoull(args[i], nullptr, 10);
+				if(pointCount == 0) {
+					printf("Invalid args: invalid point count!\nUse --help for a detailed list of all parameters and options.\n");
+					return false;
+				}
+
+				continue;
+			}
 			if(!strcmp(args[i], "--points-in")) {
 				// Check if this is the last argument
 				if(++i == argc) {
@@ -158,8 +176,8 @@ namespace gsim {
 			return false;
 		}
 		
-		// Check if a point input file name was given
-		if(!pointInFileName) {
+		// Check if a point input file or the point count was given
+		if(!pointInFileName && !pointCount) {
 			printf("Invalid args: no point input file name was given!\nUse --help for a detailed list of all parameters and options.\n");
 			return false;
 		}
@@ -167,6 +185,9 @@ namespace gsim {
 		return true;
 	}
 
+	size_t GetArgsPointCount() {
+		return pointCount;
+	}
 	const char* GetPointInFileName() {
 		return pointInFileName;
 	}

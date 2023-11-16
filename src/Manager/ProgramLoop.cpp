@@ -8,6 +8,8 @@ namespace gsim {
 	static void* DrawEventCallback(void* params) {
 		// Draw the points
 		DrawPoints();
+
+		return nullptr;
 	}
 
 	void StartProgramLoop() {

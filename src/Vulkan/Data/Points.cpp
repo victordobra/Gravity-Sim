@@ -9,6 +9,8 @@
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_enum_string_helper.h>
+#include <stdlib.h>
+#include <time.h>
 #include <math.h>
 
 namespace gsim {
@@ -28,7 +30,10 @@ namespace gsim {
 	// Public functions
 	void CreatePointBuffers() {
 		// Load the point count
-		pointCount = LoadPoints(GetPointInFileName(), nullptr);
+		if(GetPointInFileName())
+			pointCount = LoadPoints(GetPointInFileName(), nullptr);
+		else
+			pointCount = GetArgsPointCount();
 		pointBufferSize = (VkDeviceSize)(sizeof(Point) * pointCount);
 
 		// Load the device's queue family indices
@@ -83,42 +88,77 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to map Vulkan point staging buffer memory! Error code: %s", string_VkResult(result));
 
-		LoadPoints(GetPointInFileName(), (Point*)stagingBufferData);
+		if(GetPointInFileName()) {
+			// Load all points from the file
+			LoadPoints(GetPointInFileName(), (Point*)stagingBufferData);
 
-		// Loop through every point and set the screen's coords
-		Point* points = (Point*)stagingBufferData;
-		screenPos = { 0.0, 0.0 };
+			// Loop through every point and set the screen's coords
+			Point* points = (Point*)stagingBufferData;
+			screenPos = { 0.0, 0.0 };
 
-		for(size_t i = 0; i != pointCount; ++i) {
-			screenPos.x += points[i].pos.x;
-			screenPos.y += points[i].pos.y;
+			for(size_t i = 0; i != pointCount; ++i) {
+				screenPos.x += points[i].pos.x;
+				screenPos.y += points[i].pos.y;
+			}
+
+			screenPos.x /= pointCount;
+			screenPos.y /= pointCount;
+
+			// Set the screen's min size
+			screenMinSize = { 0.0, 0.0 };
+
+			for(size_t i = 0; i != pointCount; ++i) {
+				// Calculate the current point's relative position
+				Vector2 relPos{ points[i].pos.x - screenPos.x, points[i].pos.y - screenPos.y };
+
+				// Make the relative position's coordinates absolute
+				relPos.x = fabs(relPos.x);
+				relPos.y = fabs(relPos.y);
+
+				// Check if the screen's min size needs to be changed
+				if(relPos.x > screenMinSize.x)
+					screenMinSize.x = relPos.x;
+				if(relPos.y > screenMinSize.y)
+					screenMinSize.y = relPos.y;
+			}
+
+			screenMinSize.x *= 2.0;
+			screenMinSize.y *= 2.0;
+			screenMinSize.x += 2.0;
+			screenMinSize.y += 2.0;
+		} else {
+			// Set the random seed
+			srand(time(nullptr));
+
+			// Calculate the angle to apply for every new point
+			double pointAngle = 2.0 * M_PI / pointCount;
+
+			// Loop through every point
+			Point* points = (Point*)stagingBufferData;
+			double angle = 0.0;
+
+			for(size_t i = 0; i != pointCount; ++i) {
+				// Calculate the current point's normalized position
+				Vector2 pos{ cos(angle), sin(angle) };
+
+				// Set the point's position and velocity
+				points[i].pos = { pos.x * 100.0, pos.y * 100.0 };
+				points[i].vel = { -pos.x * 5.0, -pos.y * 5.0 };
+
+				// Generate a random mass
+				double mass = ((double)rand() / (double)RAND_MAX) * 99.0 + 1.0;
+
+				// Set the point's mass
+				points[i].mass = mass;
+
+				// Increase the angle
+				angle += pointAngle;
+			}
+
+			// Set the screen position and min size
+			screenPos = { 0.0, 0.0 };
+			screenMinSize = { 202.0, 202.0 };
 		}
-
-		screenPos.x /= pointCount;
-		screenPos.y /= pointCount;
-
-		// Set the screen's min size
-		screenMinSize = { 0.0, 0.0 };
-
-		for(size_t i = 0; i != pointCount; ++i) {
-			// Calculate the current point's relative position
-			Vector2 relPos{ points[i].pos.x - screenPos.x, points[i].pos.y - screenPos.y };
-
-			// Make the relative position's coordinates absolute
-			relPos.x = fabs(relPos.x);
-			relPos.y = fabs(relPos.y);
-
-			// Check if the screen's min size needs to be changed
-			if(relPos.x > screenMinSize.x)
-				screenMinSize.x = relPos.x;
-			if(relPos.y > screenMinSize.y)
-				screenMinSize.y = relPos.y;
-		}
-
-		screenMinSize.x *= 2.0;
-		screenMinSize.y *= 2.0;
-		screenMinSize.x += 2.0;
-		screenMinSize.y += 2.0;
 
 		// Flush the changes and unmap the memory
 		VkMappedMemoryRange stagingBufferMemoryRange;

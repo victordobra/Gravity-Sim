@@ -9,8 +9,11 @@ namespace gsim {
 	/// @return True if the command line args are valid, otherwise false.
 	bool ParseArgs(int argc, char** args);
 
+	/// @brief Gets the point count given in the command line args.
+	/// @return The point count given in the command line args, or 0 of a count wasn't given.
+	size_t GetArgsPointCount();
 	/// @brief Gets the name of the file containing all point data.
-	/// @return The name of the file containing all point data.
+	/// @return The name of the file containing all point data or a nullptr if no such file was given.
 	const char* GetPointInFileName();
 	/// @brief Gets the name of the file in which the final positions of the points will be written.
 	/// @return The name of the file in which the final positions of the points will be written, or a nullptr if no such file was given.
