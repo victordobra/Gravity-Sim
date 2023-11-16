@@ -9,6 +9,7 @@
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_enum_string_helper.h>
+#include <math.h>
 
 namespace gsim {
 	// Variables
@@ -20,6 +21,9 @@ namespace gsim {
 
 	static uint32_t computeIndices[POINT_BUFFER_COUNT - 1];
 	static uint32_t graphicsIndex;
+
+	static Vector2 screenPos;
+	static Vector2 screenMinSize;
 
 	// Public functions
 	void CreatePointBuffers() {
@@ -80,6 +84,41 @@ namespace gsim {
 			GSIM_LOG_FATAL("Failed to map Vulkan point staging buffer memory! Error code: %s", string_VkResult(result));
 
 		LoadPoints(GetPointInFileName(), (Point*)stagingBufferData);
+
+		// Loop through every point and set the screen's coords
+		Point* points = (Point*)stagingBufferData;
+		screenPos = { 0.0, 0.0 };
+
+		for(size_t i = 0; i != pointCount; ++i) {
+			screenPos.x += points[i].pos.x;
+			screenPos.y += points[i].pos.y;
+		}
+
+		screenPos.x /= pointCount;
+		screenPos.y /= pointCount;
+
+		// Set the screen's min size
+		screenMinSize = { 0.0, 0.0 };
+
+		for(size_t i = 0; i != pointCount; ++i) {
+			// Calculate the current point's relative position
+			Vector2 relPos{ points[i].pos.x - screenPos.x, points[i].pos.y - screenPos.y };
+
+			// Make the relative position's coordinates absolute
+			relPos.x = fabs(relPos.x);
+			relPos.y = fabs(relPos.y);
+
+			// Check if the screen's min size needs to be changed
+			if(relPos.x > screenMinSize.x)
+				screenMinSize.x = relPos.x;
+			if(relPos.y > screenMinSize.y)
+				screenMinSize.y = relPos.y;
+		}
+
+		screenMinSize.x *= 2.0;
+		screenMinSize.y *= 2.0;
+		screenMinSize.x += 2.0;
+		screenMinSize.y += 2.0;
 
 		// Flush the changes and unmap the memory
 		VkMappedMemoryRange stagingBufferMemoryRange;
@@ -248,6 +287,8 @@ namespace gsim {
 		// Destroy the staging buffer and free its memory
 		vkDestroyBuffer(GetVulkanDevice(), stagingBuffer, GetVulkanAllocCallbacks());
 		vkFreeMemory(GetVulkanDevice(), stagingBufferMemory, GetVulkanAllocCallbacks());
+
+		GSIM_LOG_INFO("Created Vulkan point buffers.");
 	}
 	void DestroyPointBuffers() {
 		// Destroy every point command buffer and free their memory
@@ -256,9 +297,20 @@ namespace gsim {
 		vkFreeMemory(GetVulkanDevice(), pointBuffersMemory, GetVulkanAllocCallbacks());
 	}
 
+	size_t GetPointCount() {
+		return pointCount;
+	}
 	VkBuffer* GetPointBuffers() {
 		return pointBuffers;
 	}
+
+	Vector2 GetScreenPos() {
+		return screenPos;
+	}
+	Vector2 GetScreenMinSize() {
+		return screenMinSize;
+	}
+
 	uint32_t AcquireNextComputeBuffer() {
 		// Save the first index in the compute index array
 		uint32_t firstIndex = computeIndices[0];
@@ -283,6 +335,12 @@ namespace gsim {
 		// Set the previous graphics index as the last index
 		computeIndices[POINT_BUFFER_COUNT - 2] = graphicsIndex;
 
+		return graphicsIndex;
+	}
+	uint32_t GetCurrentComputeBuffer() {
+		return computeIndices[0];
+	}
+	uint32_t GetCurrentGraphicsBuffer() {
 		return graphicsIndex;
 	}
 }

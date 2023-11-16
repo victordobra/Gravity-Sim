@@ -1,6 +1,11 @@
+#include "Utils/BuildInfo.hpp"
+
+#ifdef GSIM_PLATFORM_WINDOWS
+
 #include "Platform/Window.hpp"
 #include "Debug/Logger.hpp"
 #include "ProjectInfo.hpp"
+#include <stdint.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -13,10 +18,10 @@ namespace gsim {
 	// Variables
 	static WindowInfo windowInfo;
 	static WindowPlatformInfo platformInfo;
-	static bool windowDestroyed = false;
 
 	static Event moveEvent;
 	static Event resizeEvent;
+	static Event drawEvent;
 
 	// WinProc declaration
 	static LRESULT CALLBACK WinProc(_In_ HWND hWnd, _In_ UINT message, _In_ WPARAM wParam, _In_ LPARAM lParam);
@@ -37,7 +42,7 @@ namespace gsim {
 		winClass.hInstance = platformInfo.hInstance;
 		winClass.hIcon = LoadIcon(platformInfo.hInstance, IDI_APPLICATION);
 		winClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
-		winClass.hbrBackground = CreateSolidBrush(RGB(0, 0, 0));
+		winClass.hbrBackground = nullptr;
 		winClass.lpszMenuName = nullptr;
 		winClass.lpszClassName = CLASS_NAME;
 		winClass.hIconSm = LoadIcon(platformInfo.hInstance, IDI_APPLICATION);
@@ -129,7 +134,7 @@ namespace gsim {
 			// Call the window resize event
 			resizeEvent.CallEvent(&resizeInfo);
 
-			break;
+			return 0;
 		}
 		case WM_MOVE: {
 			// Set the window's new position
@@ -145,18 +150,23 @@ namespace gsim {
 			// Call the window move event
 			moveEvent.CallEvent(&moveEvent);
 
-			break;
+			return 0;
 		}
+		case WM_PAINT:
+			// Call the window draw event
+			drawEvent.CallEvent(nullptr);
+
+			return 0;
 		case WM_CLOSE:
 			// Destroy the window
 			::DestroyWindow(platformInfo.hWindow);
 
-			break;
+			return 0;
 		case WM_DESTROY:
-			// Remember that the window was destroyed
-			windowDestroyed = true;
+			// Post the quit message
+			PostQuitMessage(0);
 
-			break;
+			return 0;
 		}
 
 		return DefWindowProcA(hWnd, message, wParam, lParam);
@@ -170,15 +180,13 @@ namespace gsim {
 	void DestroyWindow() {
 		// No action required to destroy the window
 	}
-	bool PollWindowEvents() {
+	void PollWindowEvents() {
 		// Loop through every pending message
 		MSG message;
-		while(PeekMessageA(&message, platformInfo.hWindow, 0, 0, PM_REMOVE)) {
+		while(GetMessageA(&message, nullptr, 0, 0)) {
 			// Dispatch the message
 			DispatchMessageA(&message);
 		}
-
-		return !windowDestroyed;
 	}
 
 	Event& GetWindowMoveEvent() {
@@ -186,6 +194,9 @@ namespace gsim {
 	}
 	Event& GetWindowResizeEvent() {
 		return resizeEvent;
+	}
+	Event& GetWindowDrawEvent() {
+		return drawEvent;
 	}
 
 	WindowInfo GetWindowInfo() {
@@ -195,3 +206,5 @@ namespace gsim {
 		return platformInfo;
 	}
 }
+
+#endif

@@ -3,6 +3,8 @@
 #include "Device.hpp"
 #include "Instance.hpp"
 #include "RenderPass.hpp"
+#include "Vulkan/Data/Points.hpp"
+#include "Vulkan/Data/SyncObjects.hpp"
 #include "Platform/Window.hpp"
 #include "Debug/Logger.hpp"
 #include <stdint.h>
@@ -352,6 +354,16 @@ namespace gsim {
 		DestroyVulkanRenderPass();
 	}
 	void RecreateVulkanSwapChain() {
+		// Wait for the current graphics command to finish execution
+		VkResult result = vkWaitForFences(GetVulkanDevice(), 1, GetVulkanPointBufferFences() + GetCurrentGraphicsBuffer(), VK_TRUE, UINT64_MAX);
+		if(result != VK_SUCCESS)
+			GSIM_LOG_FATAL("Failed to wait for Vulkan graphics fence! Error code: %s", string_VkResult(result));
+		
+		// Wait for the present queue to idle
+		result = vkQueueWaitIdle(GetVulkanPresentQueue());
+		if(result != VK_SUCCESS)
+			GSIM_LOG_FATAL("Failed to wait for Vulkan present queue! Error code: %s", string_VkResult(result));
+
 		// Destroy the swap chain's previous images
 		DestroySwapChainImages();
 

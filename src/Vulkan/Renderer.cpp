@@ -15,8 +15,14 @@ namespace gsim {
 		// Create the point buffers
 		CreatePointBuffers();
 		CreateVulkanSyncObjects();
+
+		// Create the graphics pipeline
+		CreateGraphicsPipeline();
 	}
 	void DestroyVulkanRenderer() {
+		// Destroy the graphics pipeline
+		DestroyGraphicsPipeline();
+
 		// Destroy the point buffer
 		DestroyVulkanSyncObjects();
 		DestroyPointBuffers();

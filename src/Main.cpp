@@ -1,4 +1,5 @@
 #include "Manager/Parser.hpp"
+#include "Manager/ProgramLoop.hpp"
 #include "Debug/Logger.hpp"
 #include "Platform/Window.hpp"
 #include "Vulkan/Renderer.hpp"
@@ -14,11 +15,9 @@ int main(int argc, char** args) {
 	gsim::CreateWindow();
 	gsim::CreateVulkanRenderer();
 
-	// Run the main program loop
-	while(gsim::PollWindowEvents()) {
-		// Placeholder
-		sleep(0.01);
-	}
+	// Start the program loop and keep polling platform events until the window is closed
+	gsim::StartProgramLoop();
+	gsim::PollWindowEvents();
 
 	// Destroy every component
 	gsim::DestroyVulkanRenderer();

@@ -66,7 +66,7 @@ namespace gsim {
 	void DestroyWindow();
 	/// @brief Polls the window's events
 	/// @return False if the window was closed, otherwise true.
-	bool PollWindowEvents();
+	void PollWindowEvents();
 
 	/// @brief Gets the window's move event.
 	/// @return A reference to the window's move event.
@@ -74,6 +74,9 @@ namespace gsim {
 	/// @brief Gets the window's resize event.
 	/// @return A reference to the window's resize event.
 	Event& GetWindowResizeEvent();
+	/// @brief Gets the window's draw event.
+	/// @return A reference to the window's draw event.
+	Event& GetWindowDrawEvent();
 
 	/// @brief Gets the window's general info.
 	/// @return A struct containing the window's general info.

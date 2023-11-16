@@ -10,7 +10,8 @@
 namespace gsim {
 	// Internal variables
 	VkFence fences[POINT_BUFFER_COUNT];
-	VkSemaphore semaphores[POINT_BUFFER_COUNT];
+	VkSemaphore availableSemaphores[POINT_BUFFER_COUNT];
+	VkSemaphore finishedSemaphores[POINT_BUFFER_COUNT];
 
 	// Public functions
 	void CreateVulkanSyncObjects() {
@@ -19,7 +20,7 @@ namespace gsim {
 
 		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceCreateInfo.pNext = nullptr;
-		fenceCreateInfo.flags = 0;
+		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 		// Create the fences
 		for(uint32_t i = 0; i != POINT_BUFFER_COUNT; ++i) {
@@ -37,10 +38,17 @@ namespace gsim {
 
 		// Create the semaphores
 		for(uint32_t i = 0; i != POINT_BUFFER_COUNT; ++i) {
-			VkResult result = vkCreateSemaphore(GetVulkanDevice(), &semaphoreCreateInfo, GetVulkanAllocCallbacks(), semaphores + i);
+			VkResult result = vkCreateSemaphore(GetVulkanDevice(), &semaphoreCreateInfo, GetVulkanAllocCallbacks(), availableSemaphores + i);
 			if(result != VK_SUCCESS)
 				GSIM_LOG_FATAL("Failed to create Vulkan point buffer semaphore! Error code: %s", string_VkResult(result));
 		}
+		for(uint32_t i = 0; i != POINT_BUFFER_COUNT; ++i) {
+			VkResult result = vkCreateSemaphore(GetVulkanDevice(), &semaphoreCreateInfo, GetVulkanAllocCallbacks(), finishedSemaphores + i);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to create Vulkan point buffer semaphore! Error code: %s", string_VkResult(result));
+		}
+
+		GSIM_LOG_INFO("Created Vulkan sync objects.");
 	}
 	void DestroyVulkanSyncObjects() {
 		// Destroy the fences
@@ -49,13 +57,18 @@ namespace gsim {
 
 		// Destroy the semaphores
 		for(uint32_t i = 0; i != POINT_BUFFER_COUNT; ++i)
-			vkDestroySemaphore(GetVulkanDevice(), semaphores[i], GetVulkanAllocCallbacks());
+			vkDestroySemaphore(GetVulkanDevice(), availableSemaphores[i], GetVulkanAllocCallbacks());
+		for(uint32_t i = 0; i != POINT_BUFFER_COUNT; ++i)
+			vkDestroySemaphore(GetVulkanDevice(), finishedSemaphores[i], GetVulkanAllocCallbacks());
 	}
 
 	VkFence* GetVulkanPointBufferFences() {
 		return fences;
 	}
-	VkSemaphore* GetVulkanPointBufferSemaphores() {
-		return semaphores;
+	VkSemaphore* GetVulkanPointBufferAvailableSemaphores() {
+		return availableSemaphores;
+	}
+	VkSemaphore* GetVulkanPointBufferFinishedSemaphores() {
+		return finishedSemaphores;
 	}
 }

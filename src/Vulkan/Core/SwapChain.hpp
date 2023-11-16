@@ -72,4 +72,10 @@ namespace gsim {
 	/// @brief Gets the Vulkan swap chain's images.
 	/// @return A const reference to a vector containing all swap chain images.
 	const std::vector<VulkanSwapChainImage>& GetVulkanSwapChainImages();
+
+	/// @brief Acquires the next Vulkan swap chain image.
+	/// @param semaphore The semaphore to signal, or VK_NULL_HANDLE.
+	/// @param fence The fence to signal, or VK_NULL_HANDLE.
+	/// @return The index of the next swap chain image.
+	uint32_t AcquireNextVulkanSwapChainImage(VkSemaphore semaphore, VkFence fence);
 }
