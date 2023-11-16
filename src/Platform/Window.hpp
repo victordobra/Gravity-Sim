@@ -84,4 +84,7 @@ namespace gsim {
 	/// @brief Gets the window's platform-specific info.
 	/// @return A struct containing the window's platform-specific info.
 	WindowPlatformInfo GetWindowPlatformInfo();
+
+	/// @brief Closes the program's window.
+	void CloseWindow();
 }

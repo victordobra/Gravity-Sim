@@ -205,6 +205,11 @@ namespace gsim {
 	WindowPlatformInfo GetWindowPlatformInfo() {
 		return platformInfo;
 	}
+
+	void CloseWindow() {
+		// Destroy the window
+		::DestroyWindow(platformInfo.hWindow);
+	}
 }
 
 #endif
