@@ -8,7 +8,7 @@
 
 namespace gsim {
 	/// @brief The number of point buffers
-	const uint32_t POINT_BUFFER_COUNT = 2;
+	const uint32_t POINT_BUFFER_COUNT = 3;
 
 	/// @brief Creates the Vulkan buffers used to store point coordinates.
 	void CreatePointBuffers();
