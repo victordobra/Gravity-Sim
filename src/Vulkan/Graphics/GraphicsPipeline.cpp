@@ -20,8 +20,6 @@ namespace gsim {
 	const uint32_t FRAGMENT_SHADER_SOURCE[] {
 #include "Shaders/FragmentShader.frag.u32"
 	};
-	const uint32_t VERTEX_SHADER_SOURCE_SIZE = sizeof(VERTEX_SHADER_SOURCE);
-	const uint32_t FRAGMENT_SHADER_SOURCE_SIZE = sizeof(FRAGMENT_SHADER_SOURCE);
 
 	// Structs
 	struct PushConstants {
@@ -44,7 +42,7 @@ namespace gsim {
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.pNext = nullptr;
 		createInfo.flags = 0;
-		createInfo.codeSize = VERTEX_SHADER_SOURCE_SIZE;
+		createInfo.codeSize = sizeof(VERTEX_SHADER_SOURCE);
 		createInfo.pCode = VERTEX_SHADER_SOURCE;
 
 		// Create the vertex shader module
@@ -53,7 +51,7 @@ namespace gsim {
 			GSIM_LOG_FATAL("Failed to create Vulkan vertex shader module! Error code: %s", string_VkResult(result));
 		
 		// Set the fragment shader module create info
-		createInfo.codeSize = FRAGMENT_SHADER_SOURCE_SIZE;
+		createInfo.codeSize = sizeof(FRAGMENT_SHADER_SOURCE);
 		createInfo.pCode = FRAGMENT_SHADER_SOURCE;
 
 		// Create the vertex shader module
@@ -319,6 +317,7 @@ namespace gsim {
 		// Get the next graphics buffer index
 		uint32_t bufferIndex = AcquireNextGraphicsBuffer();
 
+		VkCommandBuffer commandBuffer = commandBuffers[bufferIndex];
 		VkBuffer pointBuffer = GetPointBuffers()[bufferIndex];
 		VkFence fence = GetVulkanPointBufferFences()[bufferIndex];
 		VkSemaphore availableSemaphore = GetVulkanPointBufferAvailableSemaphores()[bufferIndex];
@@ -350,7 +349,7 @@ namespace gsim {
 		beginInfo.pInheritanceInfo = nullptr;
 
 		// Begin recording the command buffer
-		result = vkBeginCommandBuffer(commandBuffers[bufferIndex], &beginInfo);
+		result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to begin recording Vulkan graphics command buffer! Error code: %s", string_VkResult(result));
 		
@@ -369,7 +368,7 @@ namespace gsim {
 		renderPassInfo.pClearValues = &clearValue;
 
 		// Begin the render pass
-		vkCmdBeginRenderPass(commandBuffers[bufferIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		// Set the viewport
 		VkViewport viewport;
@@ -381,17 +380,17 @@ namespace gsim {
 		viewport.minDepth = 0.f;
 		viewport.maxDepth = 1.f;
 
-		vkCmdSetViewport(commandBuffers[bufferIndex], 0, 1, &viewport);
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
 		// Set the scissor
-		vkCmdSetScissor(commandBuffers[bufferIndex], 0, 1, &renderPassInfo.renderArea);
+		vkCmdSetScissor(commandBuffer, 0, 1, &renderPassInfo.renderArea);
 
 		// Bind the graphics pipeline
-		vkCmdBindPipeline(commandBuffers[bufferIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 		// Bind the point buffer
 		VkDeviceSize offset = 0;
-		vkCmdBindVertexBuffers(commandBuffers[bufferIndex], 0, 1, &pointBuffer, &offset);
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &pointBuffer, &offset);
 
 		// Calculate the screen's size
 		double aspectRatio = (double)GetVulkanSwapChainExtent().width / (double)GetVulkanSwapChainExtent().height;
@@ -411,16 +410,16 @@ namespace gsim {
 		PushConstants pushConstants = { GetScreenPos(), screenSize };
 
 		// Push the constants to the command buffer
-		vkCmdPushConstants(commandBuffers[bufferIndex], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pushConstants);
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pushConstants);
 
 		// Draw the points
-		vkCmdDraw(commandBuffers[bufferIndex], GetPointCount(), 1, 0, 0);
+		vkCmdDraw(commandBuffer, GetPointCount(), 1, 0, 0);
 
 		// End the render pass
-		vkCmdEndRenderPass(commandBuffers[bufferIndex]);
+		vkCmdEndRenderPass(commandBuffer);
 
 		// End recording the command buffer
-		result = vkEndCommandBuffer(commandBuffers[bufferIndex]);
+		result = vkEndCommandBuffer(commandBuffer);
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to end recording Vulkan graphics command buffer! Error code: %s", string_VkResult(result));
 

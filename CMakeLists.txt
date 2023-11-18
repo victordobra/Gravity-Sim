@@ -69,7 +69,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 endif()
 
 # Find all shaders in the project
-file(GLOB_RECURSE GLSL_SOURCE_FILES ${PROJECT_SOURCE_DIR}/engine/*.vert ${PROJECT_SOURCE_DIR}/engine/*.frag ${PROJECT_SOURCE_DIR}/src/*.vert ${PROJECT_SOURCE_DIR}/src/*.frag)
+file(GLOB_RECURSE GLSL_SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/*.vert ${PROJECT_SOURCE_DIR}/src/*.frag ${PROJECT_SOURCE_DIR}/src/*.comp)
 set(GLSL_VALIDATOR glslangValidator)
 list(LENGTH GLSL_SOURCE_FILES GLSL_COUNT)
 
