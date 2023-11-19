@@ -32,6 +32,7 @@ namespace gsim {
 	static VkShaderModule fragmentShaderModule;
 	static VkPipelineLayout pipelineLayout;
 	static VkPipeline pipeline;
+
 	static VkCommandBuffer commandBuffers[POINT_BUFFER_COUNT];
 
 	// Internal helper functions

@@ -11,16 +11,16 @@ namespace gsim {
 	void DestroyGraphicsPipeline();
 
 	/// @brief Gets the Vulkan vertex shader module.
-	/// @return The Vulkan vertex shader module.
+	/// @return A handle to the Vulkan vertex shader module.
 	VkShaderModule GetVulkanVertexShaderModule();
 	/// @brief Gets the Vulkan fragment shader module.
-	/// @return The Vulkan fragment shader module.
+	/// @return A handle to the Vulkan fragment shader module.
 	VkShaderModule GetVulkanFragmentShaderModule();
 	/// @brief Gets the Vulkan graphics pipeline's layout.
-	/// @return The Vulkan graphics pipeline's layout.
+	/// @return A handle to the Vulkan graphics pipeline's layout.
 	VkPipelineLayout GetVulkanGraphicsPipelineLayout();
 	/// @brief Gets the Vulkan graphics pipeline.
-	/// @return The Vulkan graphics pipeline.
+	/// @return A handle to the Vulkan graphics pipeline.
 	VkPipeline GetVulkanGraphicsPipeline();
 
 	/// @brief Draws the points to the screen.

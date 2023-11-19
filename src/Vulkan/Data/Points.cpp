@@ -362,18 +362,21 @@ namespace gsim {
 		// Set the first index as the last index
 		computeIndices[POINT_BUFFER_COUNT - 2] = firstIndex;
 
-		return firstIndex;
+		return computeIndices[0];
 	}
 	uint32_t AcquireNextGraphicsBuffer() {
-		// Save the first index in the compute index array
-		graphicsIndex = computeIndices[0];
+		// Save the last index in the compute index array
+		uint32_t lastIndex = computeIndices[POINT_BUFFER_COUNT - 2];
 
-		// Move every other index back
-		for(uint32_t i = 1; i != POINT_BUFFER_COUNT - 1; ++i)
-			computeIndices[i - 1] = computeIndices[i];
+		// Move every other index except the first index forward
+		for(uint32_t i = POINT_BUFFER_COUNT - 3; i; ++i)
+			computeIndices[i + 1] = computeIndices[i];
 		
-		// Set the previous graphics index as the last index
-		computeIndices[POINT_BUFFER_COUNT - 2] = graphicsIndex;
+		// Set the new second index
+		computeIndices[1] = graphicsIndex;
+
+		// Set the graphics index
+		graphicsIndex = lastIndex;
 
 		return graphicsIndex;
 	}
