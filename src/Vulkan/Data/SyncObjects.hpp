@@ -10,13 +10,13 @@ namespace gsim {
 	/// @brief Destroys the Vulkan sync objects.
 	void DestroyVulkanSyncObjects();
 
-	/// @brief Gets the sync fences used for the point buffers. 
-	/// @return An array of POINT_BUFFER_COUNT length containing all buffer fences.
-	VkFence* GetVulkanPointBufferFences();
-	/// @brief Gets the sync semaphores used for availability of the point buffers. 
-	/// @return An array of POINT_BUFFER_COUNT length containing the requested buffer semaphores.
-	VkSemaphore* GetVulkanPointBufferAvailableSemaphores();
-	/// @brief Gets the sync semaphores used for finishing usage of the point buffers. 
-	/// @return An array of POINT_BUFFER_COUNT length containing the requested buffer semaphores.
-	VkSemaphore* GetVulkanPointBufferFinishedSemaphores();
+	/// @brief Gets the Vulkan fence used by graphics operations.
+	/// @return A handle to the Vulkan graphics fence.
+	VkFence GetVulkanGraphicsFence();
+	/// @brief Gets the Vulkan fence used by compute operations.
+	/// @return A handle to the Vulkan compute fence.
+	VkFence GetVulkanComputeFence();
+
+	/// @brief Waits for the Vulkan graphics and compute fences.
+	void WaitForVulkanFences();
 }

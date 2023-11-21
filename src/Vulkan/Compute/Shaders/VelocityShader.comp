@@ -1,0 +1,36 @@
+#version 430
+
+// Point struct
+struct Point {
+	dvec2 pos;
+	dvec2 vel;
+	double mass;
+};
+
+// Point buffer input
+layout(set = 0, binding = 0) buffer PointInBuffer {
+	Point pointsIn[];
+};
+layout(set = 1, binding = 0) buffer PointOutBuffer {
+	Point pointsOut[];
+};
+
+// Push constants
+layout(push_constant) uniform PushConstants {
+	double deltaTime;
+	double gravConst;
+	uint pointCount;
+} push;
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+	// Get the point's index
+	uint pointIndex = gl_GlobalInvocationID.x;
+
+	// Get the point's movement for the given delta time
+	dvec2 posChange = pointsOut[pointIndex].vel * push.deltaTime;
+
+	// Apply the position change to the current point
+	pointsOut[pointIndex].pos += posChange;
+}

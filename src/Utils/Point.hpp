@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Alignment.hpp"
+
 namespace gsim {
 	/// @brief A struct representing a 2D vector.
 	struct Vector2 {
@@ -10,7 +12,7 @@ namespace gsim {
 	};
 
 	/// @brief A struct representing a simulated point.
-	struct Point {
+	struct GSIM_ALIGNAS(sizeof(Vector2)) Point {
 		/// @brief The position of the point.
 		Vector2 pos;
 		/// @brief The velocity of the point.

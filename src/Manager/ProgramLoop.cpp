@@ -20,6 +20,12 @@ namespace gsim {
 		// Set the new last clock
 		lastClock = clock();
 
+		// Wait for the previous frame to finish execution
+		WaitForVulkanFences();
+
+		// Simulate graivty
+		SimulateGravity();
+
 		// Draw the points
 		DrawPoints();
 
@@ -36,5 +42,12 @@ namespace gsim {
 
 		// Bind the draw event
 		GetWindowDrawEvent().AddListener(DrawEventCallback);
+	}
+
+	double GetSimulationDeltaTime() {
+		return deltaTime;
+	}
+	double GetSimulationElapsedTime() {
+		return elapsedTime;
 	}
 }

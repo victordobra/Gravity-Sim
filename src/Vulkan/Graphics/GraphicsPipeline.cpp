@@ -33,7 +33,10 @@ namespace gsim {
 	static VkPipelineLayout pipelineLayout;
 	static VkPipeline pipeline;
 
-	static VkCommandBuffer commandBuffers[POINT_BUFFER_COUNT];
+	static VkSemaphore imageAvailableSemaphore;
+	static VkSemaphore renderingFinishedSemaphore;
+
+	static VkCommandBuffer commandBuffer;
 
 	// Internal helper functions
 	static void CreateShaderModules() {
@@ -254,7 +257,25 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to create Vulkan graphics pipeline! Error code: %s", string_VkResult(result));
 	}
-	static void AllocCommandBuffers() {
+	static void CreateSemaphores() {
+		// Set the semaphore create info
+		VkSemaphoreCreateInfo createInfo;
+
+		createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		createInfo.pNext = nullptr;
+		createInfo.flags = 0;
+
+		// Create the image available semaphore
+		VkResult result = vkCreateSemaphore(GetVulkanDevice(), &createInfo, GetVulkanAllocCallbacks(), &imageAvailableSemaphore);
+		if(result != VK_SUCCESS)
+			GSIM_LOG_FATAL("Failed to create image available semaphore! Error code: %s", string_VkResult(result));
+
+		// Create the rendering finished semaphore
+		result = vkCreateSemaphore(GetVulkanDevice(), &createInfo, GetVulkanAllocCallbacks(), &renderingFinishedSemaphore);
+		if(result != VK_SUCCESS)
+			GSIM_LOG_FATAL("Failed to create rendering finished semaphore! Error code: %s", string_VkResult(result));
+	}
+	static void AllocCommandBuffer() {
 		// Set the command buffer alloc info
 		VkCommandBufferAllocateInfo allocInfo;
 
@@ -262,10 +283,10 @@ namespace gsim {
 		allocInfo.pNext = nullptr;
 		allocInfo.commandPool = GetVulkanGraphicsCommandPool();
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = POINT_BUFFER_COUNT;
+		allocInfo.commandBufferCount = 1;
 
 		// Allocate the command buffer
-		VkResult result = vkAllocateCommandBuffers(GetVulkanDevice(), &allocInfo, commandBuffers);
+		VkResult result = vkAllocateCommandBuffers(GetVulkanDevice(), &allocInfo, &commandBuffer);
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to allocate Vulkan graphics command buffer! Error code: %s", string_VkResult(result));
 	}
@@ -275,7 +296,8 @@ namespace gsim {
 		CreateShaderModules();
 		CreatePipelineLayout();
 		CreatePipeline();
-		AllocCommandBuffers();
+		CreateSemaphores();
+		AllocCommandBuffer();
 
 		GSIM_LOG_INFO("Created Vulkan graphics pipeline.");
 	}
@@ -286,7 +308,11 @@ namespace gsim {
 			GSIM_LOG_FATAL("Failed to wait for device idle! Error code: %s", result);
 		
 		// Free the graphics command buffer
-		vkFreeCommandBuffers(GetVulkanDevice(), GetVulkanGraphicsCommandPool(), POINT_BUFFER_COUNT, commandBuffers);
+		vkFreeCommandBuffers(GetVulkanDevice(), GetVulkanGraphicsCommandPool(), 1, &commandBuffer);
+
+		// Destroy the semaphores
+		vkDestroySemaphore(GetVulkanDevice(), imageAvailableSemaphore, GetVulkanAllocCallbacks());
+		vkDestroySemaphore(GetVulkanDevice(), renderingFinishedSemaphore, GetVulkanAllocCallbacks());
 
 		// Destroy the pipeline and its layout
 		vkDestroyPipeline(GetVulkanDevice(), pipeline, GetVulkanAllocCallbacks());
@@ -315,29 +341,21 @@ namespace gsim {
 		if(!GetVulkanSwapChain())
 			return;
 		
-		// Get the next graphics buffer index
+		// Acquire the next graphics buffer index
 		uint32_t bufferIndex = AcquireNextGraphicsBuffer();
 
-		VkCommandBuffer commandBuffer = commandBuffers[bufferIndex];
 		VkBuffer pointBuffer = GetPointBuffers()[bufferIndex];
-		VkFence fence = GetVulkanPointBufferFences()[bufferIndex];
-		VkSemaphore availableSemaphore = GetVulkanPointBufferAvailableSemaphores()[bufferIndex];
-		VkSemaphore finishedSemaphore = GetVulkanPointBufferFinishedSemaphores()[bufferIndex];
+		VkFence fence = GetVulkanGraphicsFence();
 
-		// Wait for the current buffer's fence
-		VkResult result = vkWaitForFences(GetVulkanDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+		// Reset the graphics fence
+		VkResult result = vkResetFences(GetVulkanDevice(), 1, &fence);
 		if(result != VK_SUCCESS)
-			GSIM_LOG_FATAL("Failed to wait for Vulkan point buffer fence! Error code: %s", string_VkResult(result));
-		
-		// Reset the current buffer's fence
-		result = vkResetFences(GetVulkanDevice(), 1, &fence);
-		if(result != VK_SUCCESS)
-			GSIM_LOG_FATAL("Failed to reset Vulkan point buffer fence! Error code: %s", string_VkResult(result));
+			GSIM_LOG_FATAL("Failed to reset Vulkan graphics fence! Error code: %s", string_VkResult(result));
 
 		// Acquire the swap chain's next image index
 		uint32_t imageIndex;
 
-		result = vkAcquireNextImageKHR(GetVulkanDevice(), GetVulkanSwapChain(), UINT64_MAX, availableSemaphore, VK_NULL_HANDLE, &imageIndex);
+		result = vkAcquireNextImageKHR(GetVulkanDevice(), GetVulkanSwapChain(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to acquire next Vulkan swap chain image! Error code: %s", string_VkResult(result));
 
@@ -433,12 +451,12 @@ namespace gsim {
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.pNext = nullptr;
 		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &availableSemaphore;
+		submitInfo.pWaitSemaphores = &imageAvailableSemaphore;
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = commandBuffers + bufferIndex;
+		submitInfo.pCommandBuffers = &commandBuffer;
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &finishedSemaphore;
+		submitInfo.pSignalSemaphores = &renderingFinishedSemaphore;
 
 		// Submit to the graphics queue
 		result = vkQueueSubmit(GetVulkanGraphicsQueue(), 1, &submitInfo, fence);
@@ -453,7 +471,7 @@ namespace gsim {
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.pNext = nullptr;
 		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &finishedSemaphore;
+		presentInfo.pWaitSemaphores = &renderingFinishedSemaphore;
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = &swapChain;
 		presentInfo.pImageIndices = &imageIndex;

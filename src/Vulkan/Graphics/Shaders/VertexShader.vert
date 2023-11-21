@@ -7,6 +7,7 @@ layout(location = 2) in double mass;
 
 // Fragment output
 layout(location = 0) out vec2 screenPos;
+layout(location = 1) out float outMass;
 
 // Push constants
 layout(push_constant) uniform PushConstants {
@@ -21,5 +22,8 @@ void main() {
 	gl_Position = vec4(screenPos, 0.0, 1.0);
 
 	// Calculate the point size
-	gl_PointSize = 3.0;
+	gl_PointSize = 2.0 * float(sqrt(mass));
+
+	// Set the output mass
+	outMass = float(mass);
 }

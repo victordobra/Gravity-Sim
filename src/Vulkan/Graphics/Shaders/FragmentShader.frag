@@ -2,6 +2,7 @@
 
 // Vertex input
 layout(location = 0) in vec2 screenPos;
+layout(location = 1) in float mass;
 
 // Output
 layout(location = 0) out vec4 outColor;

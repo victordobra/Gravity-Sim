@@ -354,13 +354,11 @@ namespace gsim {
 		DestroyVulkanRenderPass();
 	}
 	void RecreateVulkanSwapChain() {
-		// Wait for the current graphics command to finish execution
-		VkResult result = vkWaitForFences(GetVulkanDevice(), 1, GetVulkanPointBufferFences() + GetCurrentGraphicsBuffer(), VK_TRUE, UINT64_MAX);
-		if(result != VK_SUCCESS)
-			GSIM_LOG_FATAL("Failed to wait for Vulkan graphics fence! Error code: %s", string_VkResult(result));
+		// Wait for the graphics and compute fences
+		WaitForVulkanFences();
 		
 		// Wait for the present queue to idle
-		result = vkQueueWaitIdle(GetVulkanPresentQueue());
+		VkResult result = vkQueueWaitIdle(GetVulkanPresentQueue());
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to wait for Vulkan present queue! Error code: %s", string_VkResult(result));
 

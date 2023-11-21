@@ -10,7 +10,7 @@ namespace gsim {
 	const char* pointInFileName = nullptr;
 	const char* pointOutFileName = nullptr;
 	const char* logFileName = nullptr;
-	double simulationInterval = 0.00001;
+	double simulationInterval = 0.001;
 	double gravitationalConstant = 1;
 	double simulationDuration = INFINITY;
 
@@ -29,7 +29,7 @@ namespace gsim {
 		"--points-in: The file containing all points to be simulated. Must be set if --point-count is not set.\n"
 		"--points-out: The file in which the final coordinates of the points will be written. Optional.\n"
 		"--log-file: The file in which all program logs will be stored. Optional.\n"
-		"--sim-interval: The time interval, in seconds, to use for calculating gravitational force. Defaulted to 1e-5.\n"
+		"--sim-interval: The time interval, in seconds, to use for calculating gravitational force. Defaulted to 1e-3.\n"
 		"--gravitational-const: The gravitation constant to use for calculating gravitational force. Defaulted to 1.\n"
 		"--simulation-duration: The duration, in seconds, of the simulation. Defaulted to infinity.\n\n"
 		"Available options:\n"
