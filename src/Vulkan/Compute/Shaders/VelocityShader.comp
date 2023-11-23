@@ -2,9 +2,9 @@
 
 // Point struct
 struct Point {
-	dvec2 pos;
-	dvec2 vel;
-	double mass;
+	vec2 pos;
+	vec2 vel;
+	float mass;
 };
 
 // Point buffer input
@@ -14,11 +14,12 @@ layout(set = 0, binding = 0) buffer PointInBuffer {
 layout(set = 1, binding = 0) buffer PointOutBuffer {
 	Point pointsOut[];
 };
+layout(set = 1, binding = 1, rg32f) uniform readonly image2D velocityImage;
 
 // Push constants
 layout(push_constant) uniform PushConstants {
-	double deltaTime;
-	double gravConst;
+	float deltaTime;
+	float gravConst;
 	uint pointCount;
 } push;
 
@@ -28,9 +29,19 @@ void main() {
 	// Get the point's index
 	uint pointIndex = gl_GlobalInvocationID.x;
 
-	// Get the point's movement for the given delta time
-	dvec2 posChange = pointsOut[pointIndex].vel * push.deltaTime;
+	// Get the point's total velocity change
+	vec2 velChange = vec2(0.0);
+	for(uint i = 0; i != push.pointCount; ++i) {
+		// Read the current interaction's velocity
+		vec2 velocity = imageLoad(velocityImage, ivec2(pointIndex, i)).xy;
 
-	// Apply the position change to the current point
-	pointsOut[pointIndex].pos += posChange;
+		// Add the current velocity to the total velocity change
+		velChange += velocity;
+	}
+
+	// Set the point's new velocity
+	pointsOut[pointIndex].vel = pointsIn[pointIndex].vel + velChange;
+
+	// Apply the velocity to the current point
+	pointsOut[pointIndex].pos = pointsIn[pointIndex].pos + pointsOut[pointIndex].vel * push.deltaTime;
 }

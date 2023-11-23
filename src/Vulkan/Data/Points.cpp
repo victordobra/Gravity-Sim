@@ -94,7 +94,7 @@ namespace gsim {
 
 			// Loop through every point and set the screen's coords
 			Point* points = (Point*)stagingBufferData;
-			screenPos = { 0.0, 0.0 };
+			screenPos = { 0.f, 0.f };
 
 			for(size_t i = 0; i != pointCount; ++i) {
 				screenPos.x += points[i].pos.x;
@@ -105,7 +105,7 @@ namespace gsim {
 			screenPos.y /= pointCount;
 
 			// Set the screen's min size
-			screenMinSize = { 0.0, 0.0 };
+			screenMinSize = { 0.f, 0.f };
 
 			for(size_t i = 0; i != pointCount; ++i) {
 				// Calculate the current point's relative position
@@ -122,31 +122,31 @@ namespace gsim {
 					screenMinSize.y = relPos.y;
 			}
 
-			screenMinSize.x *= 2.0;
-			screenMinSize.y *= 2.0;
-			screenMinSize.x += 2.0;
-			screenMinSize.y += 2.0;
+			screenMinSize.x *= 2.f;
+			screenMinSize.y *= 2.f;
+			screenMinSize.x += 2.f;
+			screenMinSize.y += 2.f;
 		} else {
 			// Set the random seed
 			srand(time(nullptr));
 
 			// Calculate the angle to apply for every new point
-			double pointAngle = 2.0 * M_PI / pointCount;
+			float pointAngle = 2.f * M_PI / pointCount;
 
 			// Loop through every point
 			Point* points = (Point*)stagingBufferData;
-			double angle = 0.0;
+			float angle = 0.f;
 
 			for(size_t i = 0; i != pointCount; ++i) {
 				// Calculate the current point's normalized position
-				Vector2 pos{ cos(angle), sin(angle) };
+				Vector2 pos{ cosf(angle), sinf(angle) };
 
 				// Set the point's position and velocity
-				points[i].pos = { pos.x * 100.0, pos.y * 100.0 };
-				points[i].vel = { -pos.x * 5.0, -pos.y * 5.0 };
+				points[i].pos = { pos.x * 100.f, pos.y * 100.f };
+				points[i].vel = { -pos.x * 5.f, -pos.y * 5.f };
 
 				// Generate a random mass
-				double mass = ((double)rand() / (double)RAND_MAX) * 99.0 + 1.0;
+				float mass = ((float)rand() / (float)RAND_MAX) * 99.f + 1.f;
 
 				// Set the point's mass
 				points[i].mass = mass;
@@ -156,8 +156,8 @@ namespace gsim {
 			}
 
 			// Set the screen position and min size
-			screenPos = { 0.0, 0.0 };
-			screenMinSize = { 202.0, 202.0 };
+			screenPos = { 0.f, 0.f };
+			screenMinSize = { 202.f, 202.f };
 		}
 
 		// Flush the changes and unmap the memory
@@ -312,7 +312,7 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to submit Vulkan point buffer transfer command buffer! Error code: %s", string_VkResult(result));
 
-		result = vkQueueWaitIdle(GetVulkanTransferQueue());
+		result = vkDeviceWaitIdle(GetVulkanDevice());
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to wait for Vulkan transfer queue idle! Error code: %s", string_VkResult(result));
 		

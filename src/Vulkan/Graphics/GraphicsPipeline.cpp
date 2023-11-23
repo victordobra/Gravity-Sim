@@ -14,10 +14,10 @@
 
 namespace gsim {
 	// Constants
-	const uint32_t VERTEX_SHADER_SOURCE[] {
+	static const uint32_t VERTEX_SHADER_SOURCE[] {
 #include "Shaders/VertexShader.vert.u32"
 	};
-	const uint32_t FRAGMENT_SHADER_SOURCE[] {
+	static const uint32_t FRAGMENT_SHADER_SOURCE[] {
 #include "Shaders/FragmentShader.frag.u32"
 	};
 
@@ -116,17 +116,17 @@ namespace gsim {
 
 		vertexAttributes[0].location = 0;
 		vertexAttributes[0].binding = 0;
-		vertexAttributes[0].format = VK_FORMAT_R64G64_SFLOAT;
+		vertexAttributes[0].format = VK_FORMAT_R32G32_SFLOAT;
 		vertexAttributes[0].offset = offsetof(Point, pos);
 
 		vertexAttributes[1].location = 1;
 		vertexAttributes[1].binding = 0;
-		vertexAttributes[1].format = VK_FORMAT_R64G64_SFLOAT;
+		vertexAttributes[1].format = VK_FORMAT_R32G32_SFLOAT;
 		vertexAttributes[1].offset = offsetof(Point, vel);
 
 		vertexAttributes[2].location = 2;
 		vertexAttributes[2].binding = 0;
-		vertexAttributes[2].format = VK_FORMAT_R64_SFLOAT;
+		vertexAttributes[2].format = VK_FORMAT_R32_SFLOAT;
 		vertexAttributes[2].offset = offsetof(Point, mass);
 
 		// Set the vertex input state create info
@@ -412,16 +412,16 @@ namespace gsim {
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &pointBuffer, &offset);
 
 		// Calculate the screen's size
-		double aspectRatio = (double)GetVulkanSwapChainExtent().width / (double)GetVulkanSwapChainExtent().height;
-		double minAspectRatio = (double)GetScreenMinSize().x / (double)GetScreenMinSize().y;
+		float aspectRatio = (float)GetVulkanSwapChainExtent().width / (float)GetVulkanSwapChainExtent().height;
+		float minAspectRatio = (float)GetScreenMinSize().x / (float)GetScreenMinSize().y;
 
 		Vector2 screenSize;
 
 		if(aspectRatio > minAspectRatio) {
-			double aspectRatioRatio = aspectRatio / minAspectRatio;
+			float aspectRatioRatio = aspectRatio / minAspectRatio;
 			screenSize = { aspectRatioRatio * GetScreenMinSize().x, GetScreenMinSize().y };
 		} else {
-			double aspectRatioRatio = minAspectRatio / aspectRatio;
+			float aspectRatioRatio = minAspectRatio / aspectRatio;
 			screenSize = { GetScreenMinSize().x, aspectRatioRatio * GetScreenMinSize().y };
 		}
 

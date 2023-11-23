@@ -6,8 +6,8 @@ namespace gsim {
 
 	/// @brief Gets the ammount of time the previous simulation took.
 	/// @return The ammount of time, in seconds, the previous simulation took.
-	double GetSimulationDeltaTime();
+	float GetSimulationDeltaTime();
 	/// @brief Gets the ammount of time since the simulation started.
 	/// @return The amount of time, in seconds, since the simulation started.
-	double GetSimulationElapsedTime();
+	float GetSimulationElapsedTime();
 }

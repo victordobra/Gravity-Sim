@@ -1,27 +1,25 @@
 #version 430
 
 // Constants
-const double MIN_DISTANCE = 0.3;
+const float MIN_DISTANCE = 0.3;
 
 // Point struct
 struct Point {
-	dvec2 pos;
-	dvec2 vel;
-	double mass;
+	vec2 pos;
+	vec2 vel;
+	float mass;
 };
 
 // Point buffer input
 layout(set = 0, binding = 0) buffer PointInBuffer {
 	Point pointsIn[];
 };
-layout(set = 1, binding = 0) buffer PointOutBuffer {
-	Point pointsOut[];
-};
+layout(set = 0, binding = 1, rg32f) uniform writeonly image2D velocityImage;
 
 // Push constants
 layout(push_constant) uniform PushConstants {
-	double deltaTime;
-	double gravConst;
+	float deltaTime;
+	float gravConst;
 	uint pointCount;
 } push;
 
@@ -29,34 +27,31 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 void main() {
 	// Get the point's index
-	uint pointIndex = gl_GlobalInvocationID.x;
+	uint point1Index = gl_GlobalInvocationID.x;
+	uint point2Index = gl_GlobalInvocationID.y;
 
-	// Get the point's data
-	Point point1 = pointsIn[pointIndex];
+	// Get the points' data
+	Point point1 = pointsIn[point1Index];
+	Point point2 = pointsIn[point2Index];
 
-	// Loop through every point
-	for(uint i = 0; i != push.pointCount; ++i) {
-		// Skip the current point if it is the target point
-		if(i == pointIndex)
-			continue;
-		
-		// Get the second point's data
-		Point point2 = pointsIn[i];
+	// Set the current encounter's velocity to 0 if the two point indices are equal
+	if(point1Index == point2Index) {
+		imageStore(velocityImage, ivec2(point1Index, point2Index), vec4(0));
+		return;
+	}
+	
+	// Get the distance between the two points
+	vec2 pointDistance = point2.pos - point1.pos;
 
-		// Get the distance between the two points
-		dvec2 pointDistance = point2.pos - point1.pos;
-
-		// Skip the current point if the distance is too small
-		if(dot(pointDistance, pointDistance) < MIN_DISTANCE * MIN_DISTANCE)
-			continue;
-
-		// Calculate the current point's acceleration
-		dvec2 acceleration = normalize(pointDistance) * (push.deltaTime * push.gravConst * point2.mass / dot(pointDistance, pointDistance));
-
-		// Apply the acceleration to the first point
-		point1.vel += acceleration;
+	// Set the current encounter's velocity to 0 if the two points are too close
+	if(dot(pointDistance, pointDistance) < MIN_DISTANCE * MIN_DISTANCE) {
+		imageStore(velocityImage, ivec2(point1Index, point2Index), vec4(0));
+		return;
 	}
 
-	// Write the point's new data to the points out array
-	pointsOut[pointIndex] = point1;
+	// Calculate the current point's acceleration
+	vec2 acceleration = normalize(pointDistance) * (push.deltaTime * push.gravConst * point2.mass / dot(pointDistance, pointDistance));
+
+	// Write the acceleration to the velocity image
+	imageStore(velocityImage, ivec2(point1Index, point2Index), vec4(acceleration, 0.0, 0.0));
 }

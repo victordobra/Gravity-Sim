@@ -9,8 +9,8 @@
 
 namespace gsim {
 	// Internal variables
-	VkFence graphicsFence;
-	VkFence computeFence;
+	static VkFence graphicsFence;
+	static VkFence computeFence;
 
 	// Public functions
 	void CreateVulkanSyncObjects() {

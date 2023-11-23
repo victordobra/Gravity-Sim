@@ -7,14 +7,14 @@
 
 namespace gsim {
 	// Variables
-	static double deltaTime = 0.0;
-	static double elapsedTime = 0.0;
+	static float deltaTime = 0.f;
+	static float elapsedTime = 0.f;
 	static clock_t lastClock;
 
 	// Draw event callback
 	static void* DrawEventCallback(void* params) {
 		// Calculate the delta time
-		deltaTime = (double)(clock() - lastClock) / (double)CLOCKS_PER_SEC;
+		deltaTime = (float)(clock() - lastClock) / (float)CLOCKS_PER_SEC;
 		elapsedTime += deltaTime;
 
 		// Set the new last clock
@@ -44,10 +44,10 @@ namespace gsim {
 		GetWindowDrawEvent().AddListener(DrawEventCallback);
 	}
 
-	double GetSimulationDeltaTime() {
+	float GetSimulationDeltaTime() {
 		return deltaTime;
 	}
-	double GetSimulationElapsedTime() {
+	float GetSimulationElapsedTime() {
 		return elapsedTime;
 	}
 }

@@ -23,13 +23,13 @@ namespace gsim {
 	const char* GetLogFileName();
 	/// @brief Gets the duration used for calculating gravitational force.
 	/// @return The time interval used for calculating gravitational force.
-	double GetSimulationInterval();
+	float GetSimulationInterval();
 	/// @brief Gets the gravitational constant used for calculation gravitational force.
 	/// @return The gravitational constant used for calculation gravitational force.
-	double GetGravitationalConstant();
+	float GetGravitationalConstant();
 	/// @brief Gets the time limit of the simulation.
 	/// @return The time limit of the simulation, or INFINITY if no limit was given.
-	double GetSimulationDuration();
+	float GetSimulationDuration();
 
 	/// @brief Checks if verbose logging is enabled.
 	/// @return True if verbose logging is enabled, otherwise false.

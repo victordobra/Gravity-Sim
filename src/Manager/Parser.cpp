@@ -10,9 +10,9 @@ namespace gsim {
 	const char* pointInFileName = nullptr;
 	const char* pointOutFileName = nullptr;
 	const char* logFileName = nullptr;
-	double simulationInterval = 0.001;
-	double gravitationalConstant = 1;
-	double simulationDuration = INFINITY;
+	float simulationInterval = .001f;
+	float gravitationalConstant = 1;
+	float simulationDuration = INFINITY;
 
 	bool isVerbose = false;
 	bool isValidationEnabled = false;
@@ -115,8 +115,8 @@ namespace gsim {
 					return false;
 				}
 
-				// Convert the current argument to a double
-				simulationInterval = strtod(args[i], nullptr);
+				// Convert the current argument to a float
+				simulationInterval = strtof(args[i], nullptr);
 				if(simulationInterval == 0) {
 					printf("Invalid args: invalid simulation interval!\nUse --help for a detailed list of all parameters and options.\n");
 					return false;
@@ -131,8 +131,8 @@ namespace gsim {
 					return false;
 				}
 
-				// Convert the current argument to a double
-				gravitationalConstant = strtod(args[i], nullptr);
+				// Convert the current argument to a float
+				gravitationalConstant = strtof(args[i], nullptr);
 				if(gravitationalConstant == 0) {
 					printf("Invalid args: invalid gravitational constant!\nUse --help for a detailed list of all parameters and options.\n");
 					return false;
@@ -147,8 +147,8 @@ namespace gsim {
 					return false;
 				}
 
-				// Convert the current argument to a double
-				simulationDuration = strtod(args[i], nullptr);
+				// Convert the current argument to a float
+				simulationDuration = strtof(args[i], nullptr);
 				if(simulationDuration == 0) {
 					printf("Invalid args: invalid simulation duration!\nUse --help for a detailed list of all parameters and options.\n");
 					return false;
@@ -197,13 +197,13 @@ namespace gsim {
 	const char* GetLogFileName() {
 		return logFileName;
 	}
-	double GetSimulationInterval() {
+	float GetSimulationInterval() {
 		return simulationInterval;
 	}
-	double GetGravitationalConstant() {
+	float GetGravitationalConstant() {
 		return gravitationalConstant;
 	}
-	double GetSimulationDuration() {
+	float GetSimulationDuration() {
 		return simulationDuration;
 	}
 
