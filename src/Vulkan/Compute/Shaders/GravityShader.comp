@@ -34,6 +34,10 @@ void main() {
 	Point point1 = pointsIn[point1Index];
 	Point point2 = pointsIn[point2Index];
 
+	// Ship the current encuounter if the first index is higher than the second
+	if(point1Index > point2Index)
+		return;
+
 	// Set the current encounter's velocity to 0 if the two point indices are equal
 	if(point1Index == point2Index) {
 		imageStore(velocityImage, ivec2(point1Index, point2Index), vec4(0));
@@ -46,12 +50,14 @@ void main() {
 	// Set the current encounter's velocity to 0 if the two points are too close
 	if(dot(pointDistance, pointDistance) < MIN_DISTANCE * MIN_DISTANCE) {
 		imageStore(velocityImage, ivec2(point1Index, point2Index), vec4(0));
+		imageStore(velocityImage, ivec2(point2Index, point1Index), vec4(0));
 		return;
 	}
 
-	// Calculate the current point's acceleration
-	vec2 acceleration = normalize(pointDistance) * (push.deltaTime * push.gravConst * point2.mass / dot(pointDistance, pointDistance));
+	// Calculate the current acceleration without each mass
+	vec2 acceleration = normalize(pointDistance) * (push.deltaTime * push.gravConst / dot(pointDistance, pointDistance));
 
-	// Write the acceleration to the velocity image
-	imageStore(velocityImage, ivec2(point1Index, point2Index), vec4(acceleration, 0.0, 0.0));
+	// Write the accelerations to the velocity image
+	imageStore(velocityImage, ivec2(point1Index, point2Index), vec4(acceleration * point2.mass, 0.0, 0.0));
+	imageStore(velocityImage, ivec2(point2Index, point1Index), vec4(-acceleration * point1.mass, 0.0, 0.0));
 }

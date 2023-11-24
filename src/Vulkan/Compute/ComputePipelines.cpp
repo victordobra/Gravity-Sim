@@ -449,18 +449,6 @@ namespace gsim {
 		vkFreeCommandBuffers(GetVulkanDevice(), GetVulkanComputeCommandPool(), 1, &commandBuffer);
 	}
 
-	VkDescriptorSetLayout GetVulkanComputeDescriptorSetLayout() {
-		return descriptorSetLayout;
-	}
-	VkDescriptorPool GetVulkanComputeDescriptorPool() {
-		return descriptorPool;
-	}
-	VkShaderModule GetVulkanComputeGravityShaderModule() {
-		return gravityShaderModule;
-	}
-	VkShaderModule GetVulkanComputeVelocityShaderModule() {
-		return velocityShaderModule;
-	}
 	VkPipelineLayout GetVulkanComputePipelineLayout() {
 		return pipelineLayout;
 	}
