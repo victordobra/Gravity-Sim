@@ -13,6 +13,7 @@ layout(location = 1) out float outMass;
 layout(push_constant) uniform PushConstants {
 	vec2 screenPos;
 	vec2 screenSize;
+	uint pointCount;
 } push;
 
 void main() {
@@ -22,7 +23,7 @@ void main() {
 	gl_Position = vec4(screenPos, 0.0, 1.0);
 
 	// Calculate the point size
-	gl_PointSize = 0.5 * sqrt(mass);
+	gl_PointSize = sqrt(mass * 100.0 / push.pointCount);
 
 	// Set the output mass
 	outMass = mass;

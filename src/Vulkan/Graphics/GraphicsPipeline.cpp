@@ -25,6 +25,7 @@ namespace gsim {
 	struct PushConstants {
 		Vector2 screenPos;
 		Vector2 screenSize;
+		uint32_t pointCount;
 	};
 
 	// Variables
@@ -426,7 +427,7 @@ namespace gsim {
 		}
 
 		// Set the push constants
-		PushConstants pushConstants = { GetScreenPos(), screenSize };
+		PushConstants pushConstants = { GetScreenPos(), screenSize, (uint32_t)GetPointCount() };
 
 		// Push the constants to the command buffer
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pushConstants);
