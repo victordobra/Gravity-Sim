@@ -483,6 +483,11 @@ namespace gsim {
 		// Get the new simulation count
 		uint64_t newSimulationCount = (uint64_t)(GetSimulationElapsedTime() / GetSimulationInterval());
 
+		// Limit the new simulation count to the max simulation count
+		uint64_t maxSimulationCount = (uint64_t)(GetSimulationDuration() / GetSimulationInterval());
+		if(maxSimulationCount && maxSimulationCount > maxSimulationCount)
+			newSimulationCount = maxSimulationCount;
+
 		// Get the number of simulations to be elapsed
 		uint64_t currentSimCount = newSimulationCount - simulationCount;
 

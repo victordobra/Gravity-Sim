@@ -82,12 +82,13 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to bind Vulkan point staging buffer memory! Error code: %s", string_VkResult(result));
 		
-		// Read every point into the staging buffer
+		// Map the staging buffer's memory
 		void* stagingBufferData;
 		result = vkMapMemory(GetVulkanDevice(), stagingBufferMemory, 0, pointBufferSize, 0, &stagingBufferData);
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to map Vulkan point staging buffer memory! Error code: %s", string_VkResult(result));
 
+		// Read every point into the staging buffer
 		if(GetPointInFileName()) {
 			// Load all points from the file
 			LoadPoints(GetPointInFileName(), (Point*)stagingBufferData);
@@ -331,6 +332,153 @@ namespace gsim {
 		GSIM_LOG_INFO("Created Vulkan point buffers.");
 	}
 	void DestroyPointBuffers() {
+		// Check if an output file was given
+		if(GetPointOutFileName()) {
+			// Load the device's queue family indices
+			VulkanQueueFamilyIndices queueFamilyIndices = GetVulkanDeviceQueueFamilyIndices();
+
+			// Set the staging buffer create info
+			VkBufferCreateInfo createInfo;
+
+			createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+			createInfo.pNext = nullptr;
+			createInfo.flags = 0;
+			createInfo.size = pointBufferSize;
+			createInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			createInfo.queueFamilyIndexCount = 1;
+			createInfo.pQueueFamilyIndices = &queueFamilyIndices.transferQueueIndex;
+
+			// Create the staging buffer
+			VkBuffer stagingBuffer;
+
+			VkResult result = vkCreateBuffer(GetVulkanDevice(), &createInfo, GetVulkanAllocCallbacks(), &stagingBuffer);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to create Vulkan point staging buffer! Error code: %s", string_VkResult(result));
+			
+			// Get the staging buffer's memory requirements
+			VkMemoryRequirements memoryRequirements;
+			vkGetBufferMemoryRequirements(GetVulkanDevice(), stagingBuffer, &memoryRequirements);
+
+			// Set the staging buffer's alloc info
+			VkMemoryAllocateInfo allocInfo;
+
+			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			allocInfo.pNext = nullptr;
+			allocInfo.allocationSize = memoryRequirements.size;
+			allocInfo.memoryTypeIndex = FindVulkanMemoryType(0, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+			// Allocate the staging buffer's memory
+			VkDeviceMemory stagingBufferMemory;
+
+			result = vkAllocateMemory(GetVulkanDevice(), &allocInfo, GetVulkanAllocCallbacks(), &stagingBufferMemory);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to allocate Vulkan point staging buffer memory! Error code: %s", string_VkResult(result));
+			
+			// Bind the staging buffer to its memory
+			result = vkBindBufferMemory(GetVulkanDevice(), stagingBuffer, stagingBufferMemory, 0);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to bind Vulkan point staging buffer memory! Error code: %s", string_VkResult(result));
+
+			// Set the transfer command buffer alloc info
+			VkCommandBuffer commandBuffer;
+
+			VkCommandBufferAllocateInfo commandBufferAllocInfo;
+
+			commandBufferAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			commandBufferAllocInfo.pNext = nullptr;
+			commandBufferAllocInfo.commandPool = GetVulkanTransferCommandPool();
+			commandBufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			commandBufferAllocInfo.commandBufferCount = 1;
+
+			// Allocate the transfer command buffer
+			result = vkAllocateCommandBuffers(GetVulkanDevice(), &commandBufferAllocInfo, &commandBuffer);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to allocate Vulkan point buffer transfer command buffer! Error code: %s", string_VkResult(result));
+			
+			// Set the transfer command buffer begin info
+			VkCommandBufferBeginInfo commandBufferBeginInfo;
+
+			commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			commandBufferBeginInfo.pNext = nullptr;
+			commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+			// Begin recording the transfer command buffer
+			result = vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to begin recording Vulkan point buffer transfer command buffer! Error code: %s", string_VkResult(result));
+			
+			// Set the copy region
+			VkBufferCopy copyRegion;
+
+			copyRegion.srcOffset = 0;
+			copyRegion.dstOffset = 0;
+			copyRegion.size = pointBufferSize;
+
+			// Record the copy command from the latest modified buffer
+			vkCmdCopyBuffer(commandBuffer, pointBuffers[computeIndices[0]], stagingBuffer, 1, &copyRegion);
+			
+			// End recording the transfer command buffer
+			result = vkEndCommandBuffer(commandBuffer);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to begin recording Vulkan point buffer transfer command buffer! Error code: %s", string_VkResult(result));
+			
+			// Set the command buffer submit info
+			VkSubmitInfo submitInfo;
+
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.pNext = nullptr;
+			submitInfo.waitSemaphoreCount = 0;
+			submitInfo.pWaitSemaphores = nullptr;
+			submitInfo.pWaitDstStageMask = nullptr;
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &commandBuffer;
+			submitInfo.signalSemaphoreCount = 0;
+			submitInfo.pSignalSemaphores = nullptr;
+
+			// Submit the transfer command buffer and wait for it to finish execution
+			result = vkQueueSubmit(GetVulkanTransferQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to submit Vulkan point buffer transfer command buffer! Error code: %s", string_VkResult(result));
+
+			result = vkDeviceWaitIdle(GetVulkanDevice());
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to wait for Vulkan transfer queue idle! Error code: %s", string_VkResult(result));
+			
+			// Map the staging buffer's memory
+			void* stagingBufferData;
+			result = vkMapMemory(GetVulkanDevice(), stagingBufferMemory, 0, pointBufferSize, 0, &stagingBufferData);
+			if(result != VK_SUCCESS)
+				GSIM_LOG_FATAL("Failed to map Vulkan point staging buffer memory! Error code: %s", string_VkResult(result));
+
+			// Write every point to the given file
+			FILE* fileOutput = fopen(GetPointOutFileName(), "w");
+			if(fileOutput) {
+				// Write the points' coordinates and velocities to the array
+				Point* points = (Point*)stagingBufferData;
+				int32_t result = 1;
+
+				for(size_t i = 0; i != pointCount && result > 0; ++i)
+					result = fprintf(fileOutput, "%f %f %f %f\n", points[i].pos.x, points[i].pos.y, points[i].vel.x, points[i].vel.y);
+				
+				// Log an error if logging failed
+				if(result <= 0)
+					GSIM_LOG_ERROR("Failed to log the points' coordinates to the given output file!");
+				
+				// Close the file output stream
+				fclose(fileOutput);
+			} else
+				GSIM_LOG_ERROR("Failed to log the points' coordinates to the given output file!");
+
+			// Unmap the staging buffer's memory
+			vkUnmapMemory(GetVulkanDevice(), stagingBufferMemory);
+
+			// Destroy the staging buffer and free its memory
+			vkDestroyBuffer(GetVulkanDevice(), stagingBuffer, GetVulkanAllocCallbacks());
+			vkFreeMemory(GetVulkanDevice(), stagingBufferMemory, GetVulkanAllocCallbacks());
+		}
+
 		// Destroy every point command buffer and free their memory
 		for(uint32_t i = 0; i != POINT_BUFFER_COUNT; ++i)
 			vkDestroyBuffer(GetVulkanDevice(), pointBuffers[i], GetVulkanAllocCallbacks());

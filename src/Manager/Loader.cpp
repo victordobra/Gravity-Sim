@@ -3,7 +3,7 @@
 
 namespace gsim {
 	size_t LoadPoints(const char* fileName, Point* points) {
-		// Open the file output stream
+		// Open the file input stream
 		FILE* fileInput = fopen(fileName, "r");
 		if(!fileInput)
 			return 0;
@@ -11,7 +11,7 @@ namespace gsim {
 		// Keep reading points until the file is over
 		Point point;
 		size_t pointCount = 0;
-		while(fscanf(fileInput, "%lf%lf%lf%lf%lf", &point.pos.x, &point.pos.y, &point.vel.x, &point.vel.y, &point.mass) == 5) {
+		while(fscanf(fileInput, "%f%f%f%f%f", &point.pos.x, &point.pos.y, &point.vel.x, &point.vel.y, &point.mass) == 5) {
 			// Write the point to the point array, if one was given
 			if(points)
 				*points++ = point;

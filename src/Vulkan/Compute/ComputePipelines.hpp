@@ -20,6 +20,6 @@ namespace gsim {
 	/// @return A handle to the Vulkan compute velocity pipeline.
 	VkPipeline GetVulkanComputeVelocityPipeline();
 
-	/// @brief Simulates gravityfor the current delta time.
+	/// @brief Simulates gravity for the current delta time.
 	void SimulateGravity();
 }

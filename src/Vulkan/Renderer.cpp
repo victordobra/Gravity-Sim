@@ -21,6 +21,9 @@ namespace gsim {
 		CreateComputePipelines();
 	}
 	void DestroyVulkanRenderer() {
+		// Wait for the fences
+		WaitForVulkanFences();
+
 		// Destroy the pipeliens
 		DestroyComputePipelines();
 		DestroyGraphicsPipeline();
