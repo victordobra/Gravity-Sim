@@ -30,10 +30,10 @@ namespace gsim {
 	// Public functions
 	void CreatePointBuffers() {
 		// Load the point count
-		if(GetPointInFileName())
-			pointCount = LoadPoints(GetPointInFileName(), nullptr);
-		else
+		if(GetArgsPointCount())
 			pointCount = GetArgsPointCount();
+		else
+			pointCount = LoadPoints(GetPointInFileName(), nullptr);
 		pointBufferSize = (VkDeviceSize)(sizeof(Point) * pointCount);
 
 		// Load the device's queue family indices
@@ -89,7 +89,60 @@ namespace gsim {
 			GSIM_LOG_FATAL("Failed to map Vulkan point staging buffer memory! Error code: %s", string_VkResult(result));
 
 		// Read every point into the staging buffer
-		if(GetPointInFileName()) {
+		if(GetArgsPointCount()) {
+			// Set the random seed
+			srand(time(nullptr));
+
+			// Calculate the angle to apply for every new point
+			float pointAngle = 2.f * M_PI / pointCount;
+
+			// Loop through every point
+			Point* points = (Point*)stagingBufferData;
+			float angle = 0.f;
+
+			for(size_t i = 0; i != pointCount; ++i) {
+				// Calculate the current point's normalized position
+				Vector2 pos{ cosf(angle), sinf(angle) };
+
+				// Set the point's position and velocity
+				points[i].pos = { pos.x * 100.f, pos.y * 100.f };
+				points[i].vel = { -pos.x * 5.f, -pos.y * 5.f };
+
+				// Generate a random mass
+				float mass = ((float)rand() / (float)RAND_MAX) * 99.f + 1.f;
+
+				// Set the point's mass
+				points[i].mass = mass;
+
+				// Increase the angle
+				angle += pointAngle;
+			}
+
+			// Set the screen position and min size
+			screenPos = { 0.f, 0.f };
+			screenMinSize = { 202.f, 202.f };
+
+			if(GetPointInFileName()) {
+				// Write every point's info to the given file
+				FILE* fileOutput = fopen(GetPointInFileName(), "w");
+				if(fileOutput) {
+					// Write the points' parameters to the file
+					int32_t result = 1;
+
+					for(size_t i = 0; i != pointCount && result > 0; ++i)
+						result = fprintf(fileOutput, "%f %f %f %f %f\n", points[i].pos.x, points[i].pos.y, points[i].vel.x, points[i].vel.y, points[i].mass);
+					
+					// Log an error if logging failed
+					if(result <= 0)
+						GSIM_LOG_ERROR("Failed to log the points' parameters to the given input file!");
+					
+					// Close the file output stream
+					fclose(fileOutput);
+				} else
+					GSIM_LOG_ERROR("Failed to log the points' parameters to the given input file!");
+
+			}
+		} else {
 			// Load all points from the file
 			LoadPoints(GetPointInFileName(), (Point*)stagingBufferData);
 
@@ -127,38 +180,6 @@ namespace gsim {
 			screenMinSize.y *= 2.f;
 			screenMinSize.x += 2.f;
 			screenMinSize.y += 2.f;
-		} else {
-			// Set the random seed
-			srand(time(nullptr));
-
-			// Calculate the angle to apply for every new point
-			float pointAngle = 2.f * M_PI / pointCount;
-
-			// Loop through every point
-			Point* points = (Point*)stagingBufferData;
-			float angle = 0.f;
-
-			for(size_t i = 0; i != pointCount; ++i) {
-				// Calculate the current point's normalized position
-				Vector2 pos{ cosf(angle), sinf(angle) };
-
-				// Set the point's position and velocity
-				points[i].pos = { pos.x * 100.f, pos.y * 100.f };
-				points[i].vel = { -pos.x * 5.f, -pos.y * 5.f };
-
-				// Generate a random mass
-				float mass = ((float)rand() / (float)RAND_MAX) * 99.f + 1.f;
-
-				// Set the point's mass
-				points[i].mass = mass;
-
-				// Increase the angle
-				angle += pointAngle;
-			}
-
-			// Set the screen position and min size
-			screenPos = { 0.f, 0.f };
-			screenMinSize = { 202.f, 202.f };
 		}
 
 		// Flush the changes and unmap the memory
@@ -455,7 +476,7 @@ namespace gsim {
 			// Write every point to the given file
 			FILE* fileOutput = fopen(GetPointOutFileName(), "w");
 			if(fileOutput) {
-				// Write the points' coordinates and velocities to the array
+				// Write the points' coordinates and velocities to the file
 				Point* points = (Point*)stagingBufferData;
 				int32_t result = 1;
 

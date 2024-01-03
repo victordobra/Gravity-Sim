@@ -16,6 +16,7 @@ namespace gsim {
 
 	bool isVerbose = false;
 	bool isValidationEnabled = false;
+	bool isRenderingEnabled = true;
 
 	// Internal helper functions
 	static void WriteVersion() {
@@ -24,9 +25,9 @@ namespace gsim {
 	}
 	static void WriteHelp() {
 		// Write the help
-		printf("Available parameters:\n"
-		"--point-count: The number of points to simulate. Used only if --points-in is not set, in which the given number of points will start in a circular arrangement moving towards the center with random masses.\n"
-		"--points-in: The file containing all points to be simulated. Must be set if --point-count is not set.\n"
+		printf("\nAvailable parameters:\n"
+		"--point-count: The number of points to simulate. If set, the given number of points will start in a circular arrangement moving towards the center with random masses.\n"
+		"--points-in: The file containing all points to be simulated. If --point-count is also set, the program will write in the file the initial properties of the generated points.\n"
 		"--points-out: The file in which the final coordinates of the points will be written. Optional.\n"
 		"--log-file: The file in which all program logs will be stored. Optional.\n"
 		"--sim-interval: The time interval, in seconds, to use for calculating gravitational force. Defaulted to 1e-3.\n"
@@ -36,7 +37,8 @@ namespace gsim {
 		"--version: Prints the program's version and exits the program.\n"
 		"--help: Prints the current message and exits the program.\n"
 		"--verbose: Prints additional debug messages about the state of the program.\n"
-		"--vulkan-validation: Enables Vulkan validation for the rest of the program's runtime.\n");
+		"--vulkan-validation: Enables Vulkan validation for the rest of the program's runtime.\n"
+		"--no-rendering: Doesn't render the gravity simulation's output in real time, only running the gravity simulations.\n\n");
 	}
 
 	// Public functions
@@ -170,6 +172,12 @@ namespace gsim {
 
 				continue;
 			}
+			if(!strcmp(args[i], "--no-rendering")) {
+				// Disable rendering
+				isRenderingEnabled = false;
+
+				continue;
+			}
 
 			// No valid parameter or option name was given; print an error and exit the function
 			printf("Invald args: invalid parameter or option name!\nUse --help for a detailed list of all parameters and options.\n");
@@ -212,5 +220,8 @@ namespace gsim {
 	}
 	bool IsValidationEnabled() {
 		return isValidationEnabled;
+	}
+	bool IsRenderingEnabled() {
+		return isRenderingEnabled;
 	}
 }

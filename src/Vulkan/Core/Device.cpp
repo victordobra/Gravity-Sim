@@ -3,6 +3,7 @@
 #include "Instance.hpp"
 #include "SwapChain.hpp"
 #include "Debug/Logger.hpp"
+#include "Manager/Parser.hpp"
 #include <unordered_set>
 #include <stdint.h>
 #include <stdlib.h>
@@ -73,22 +74,28 @@ namespace gsim {
 
 			// Check if the current family is a graphics queue family
 			if(queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-				// Check if the current queue family also supports presenting
-				VkBool32 presentSupported;
-				VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, GetVulkanSurface(), &presentSupported);
-				if(result != VK_SUCCESS)
-					GSIM_LOG_FATAL("Failed to query Vulkan queue family present support! Error code: %s", string_VkResult(result));
-				
-				// If the current queue family also supports presenting, set the new queue families and exit the loop
-				if(presentSupported) {
+				if(IsRenderingEnabled()) {
+					// Check if the current queue family also supports presenting
+					VkBool32 presentSupported;
+					VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, GetVulkanSurface(), &presentSupported);
+					if(result != VK_SUCCESS)
+						GSIM_LOG_FATAL("Failed to query Vulkan queue family present support! Error code: %s", string_VkResult(result));
+					
+					// If the current queue family also supports presenting, set the new queue families and exit the loop
+					if(presentSupported) {
+						families.graphicsQueueIndex = i;
+						families.presentQueueIndex = i;
+
+						break;
+					}
+
+					// Presenting is not supported; store the queue family index but keep looking
+					families.graphicsQueueIndex = i;
+				} else {
+					// Set the graphics and present queue family indices to the current index, as it will not be used for presenting
 					families.graphicsQueueIndex = i;
 					families.presentQueueIndex = i;
-
-					break;
 				}
-
-				// Presenting is not supported; store the queue family index but keep looking
-				families.graphicsQueueIndex = i;
 			}
 		}
 
@@ -217,14 +224,16 @@ namespace gsim {
 		if(mandatoryExtensionCount != MANDATORY_DEVICE_EXTENSIONS.size())
 			return 0;
 		
-		// Get the physical device's supported surface present mode and format count
-		uint32_t surfacePresentModeCount, surfaceFormatCount;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, GetVulkanSurface(), &surfacePresentModeCount, nullptr);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, GetVulkanSurface(), &surfaceFormatCount, nullptr);
+		if(IsRenderingEnabled()) {
+			// Get the physical device's supported surface present mode and format count
+			uint32_t surfacePresentModeCount, surfaceFormatCount;
+			vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, GetVulkanSurface(), &surfacePresentModeCount, nullptr);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, GetVulkanSurface(), &surfaceFormatCount, nullptr);
 
-		// Exit the function if no present modes or formats are supported
-		if(!surfacePresentModeCount || !surfaceFormatCount)
-			return 0;
+			// Exit the function if no present modes or formats are supported
+			if(!surfacePresentModeCount || !surfaceFormatCount)
+				return 0;
+		}
 		
 		// Get the current physical device's queue family indices
 		VulkanQueueFamilyIndices families = GetQueueFamilies(physicalDevice);

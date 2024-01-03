@@ -4,6 +4,7 @@
 
 #include "Platform/Window.hpp"
 #include "Debug/Logger.hpp"
+#include "Manager/Parser.hpp"
 #include "ProjectInfo.hpp"
 #include <stdint.h>
 
@@ -174,6 +175,10 @@ namespace gsim {
 
 	// Public functions
 	void CreateWindow() {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return;
+
 		RegisterWindowClass();
 		CreateWin32Window();
 	}
@@ -181,6 +186,10 @@ namespace gsim {
 		// No action required to destroy the window
 	}
 	void PollWindowEvents() {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return;
+
 		// Loop through every pending message
 		MSG message;
 		while(GetMessageA(&message, nullptr, 0, 0)) {

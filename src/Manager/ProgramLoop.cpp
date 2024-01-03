@@ -37,11 +37,21 @@ namespace gsim {
 	}
 
 	void StartProgramLoop() {
-		// Set the last clock
-		lastClock = clock();
+		if(IsRenderingEnabled()) {
+			// Set the last clock
+			lastClock = clock();
 
-		// Bind the draw event
-		GetWindowDrawEvent().AddListener(DrawEventCallback);
+			// Bind the draw event
+			GetWindowDrawEvent().AddListener(DrawEventCallback);
+		} else {
+			for(; elapsedTime <= GetSimulationDuration(); elapsedTime += 1.f) {
+				// Wait for the previous frame to finish execution
+				WaitForVulkanFences();
+
+				// Simulate gravity
+				SimulateGravity();
+			}
+		}
 	}
 
 	float GetSimulationDeltaTime() {

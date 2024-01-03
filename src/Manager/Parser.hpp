@@ -37,4 +37,7 @@ namespace gsim {
 	/// @brief Checks if Vulkan validation is enabled.
 	/// @return True if Vulkan validation is enabled, otherwise false.
 	bool IsValidationEnabled();
+	/// @brief Checks if rendering is enabled.
+	/// @return True if rendering is enabled, otherwise false.
+	bool IsRenderingEnabled();
 }

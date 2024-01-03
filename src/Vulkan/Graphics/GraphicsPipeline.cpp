@@ -7,6 +7,7 @@
 #include "Vulkan/Data/Points.hpp"
 #include "Vulkan/Data/SyncObjects.hpp"
 #include "Debug/Logger.hpp"
+#include "Manager/Parser.hpp"
 #include "Utils/Point.hpp"
 
 #include <vulkan/vulkan.h>
@@ -294,6 +295,10 @@ namespace gsim {
 
 	// Public functions
 	void CreateGraphicsPipeline() {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return;
+
 		CreateShaderModules();
 		CreatePipelineLayout();
 		CreatePipeline();
@@ -303,6 +308,10 @@ namespace gsim {
 		GSIM_LOG_INFO("Created Vulkan graphics pipeline.");
 	}
 	void DestroyGraphicsPipeline() {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return;
+
 		// Wait for the device to idle
 		VkResult result = vkDeviceWaitIdle(GetVulkanDevice());
 		if(result != VK_SUCCESS)

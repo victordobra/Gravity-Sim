@@ -7,6 +7,7 @@
 #include "Vulkan/Data/SyncObjects.hpp"
 #include "Platform/Window.hpp"
 #include "Debug/Logger.hpp"
+#include "Manager/Parser.hpp"
 #include <stdint.h>
 #include <vector>
 
@@ -273,6 +274,10 @@ namespace gsim {
 
 	// Public functions
 	void CreateVulkanSurface() {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return;
+
 		// Get the window platform info
 		WindowPlatformInfo platformInfo = GetWindowPlatformInfo();
 
@@ -307,6 +312,10 @@ namespace gsim {
 #endif
 	}
 	void DestroyVulkanSurface() {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return;
+
 		// Destroy the surface
 		vkDestroySurfaceKHR(GetVulkanInstance(), surface, GetVulkanAllocCallbacks());
 	}
@@ -326,6 +335,10 @@ namespace gsim {
 
 	/// @brief Creates the Vulkan swap chain.
 	void CreateVulkanSwapChain() {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return;
+
 		// Set the swap chain's default settings
 		GetSwapChainSupportDetails();
 		SetSwapChainDefaultSettings();
@@ -343,6 +356,10 @@ namespace gsim {
 	}
 	/// @brief Destroys the Vulkan swap chain.
 	void DestroyVulkanSwapChain() {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return;
+
 		// Destroy the swap chain's images
 		DestroySwapChainImages();
 
@@ -354,6 +371,10 @@ namespace gsim {
 		DestroyVulkanRenderPass();
 	}
 	void RecreateVulkanSwapChain() {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return;
+
 		// Wait for the graphics and compute fences
 		WaitForVulkanFences();
 		
@@ -384,6 +405,10 @@ namespace gsim {
 		return swapChainSettings;
 	}
 	bool SetVulkanSwapChainSettings(const VulkanSwapChainSettings& newSettings) {
+		// Exit the function if rendering is not enabled
+		if(!IsRenderingEnabled())
+			return false;
+
 		// Check if the settings' surface format is supported
 		bool surfaceFormatFound = false;
 		for(const auto& surfaceFormat : supportedSurfaceFormats) {
