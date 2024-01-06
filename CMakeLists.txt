@@ -64,7 +64,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 	message(STATUS "Project include directories added.")
 
 	# Add the link libraries for Linux
-	target_link_libraries(${PROJECT_NAME} vulkan X11 Xfixes xkbcommon)
+	target_link_libraries(${PROJECT_NAME} vulkan xcb Xfixes xkbcommon)
 	message(STATUS "Project link libraries added.")
 endif()
 

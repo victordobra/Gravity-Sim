@@ -6,6 +6,8 @@
 
 #if defined(GSIM_PLATFORM_WINDOWS)
 #include <windef.h>
+#elif defined(GSIM_PLATFORM_LINUX)
+#include <xcb/xproto.h>
 #endif
 
 namespace gsim {
@@ -34,6 +36,16 @@ namespace gsim {
 		ATOM winClassAtom;
 		/// @brief A handle to the app's window.
 		HWND hWindow;
+	};
+#elif defined(GSIM_PLATFORM_LINUX)
+	/// @brief A struct containing Linux-specific window info.
+	struct WindowPlatformInfo {
+		/// @brief The XCB connection to the server.
+		xcb_connection_t* connection;
+		/// @brief The screen the current window is in.
+		xcb_screen_t* screen;
+		/// @brief The program's window.
+		xcb_window_t window;
 	};
 #endif
 

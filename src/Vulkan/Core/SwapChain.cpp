@@ -15,7 +15,7 @@
 #if defined(GSIM_PLATFORM_WINDOWS)
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(GSIM_PLATFORM_LINUX)
-#define VK_USE_PLATFORM_XLIB_KHR
+#define VK_USE_PLATFORM_XCB_KHR
 #endif
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_enum_string_helper.h>
@@ -296,19 +296,19 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_LOG_FATAL("Failed to create Win32 Vulkan window surface! Error code: %s", string_VkResult(result));
 #elif defined(GSIM_PLATFORM_LINUX)
-		// Set the Xlib surface create info
-		VkXlibSurfaceCreateInfoKHR createInfo;
+		// Set the XCB surface create info
+		VkXcbSurfaceCreateInfoKHR createInfo;
 
-		createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+		createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
 		createInfo.pNext = nullptr;
 		createInfo.flags = 0;
-		createInfo.dpy = platformInfo.display;
+		createInfo.connection = platformInfo.connection;
 		createInfo.window = platformInfo.window;
 
-		// Create the Xlib surface
-		VkResult result = vkCreateXlibSurfaceKHR(GetVulkanInstance(), &createInfo, GetVulkanAllocCallbacks(), &surface);
+		// Create the XCB surface
+		VkResult result = vkCreateXcbSurfaceKHR(GetVulkanInstance(), &createInfo, GetVulkanAllocCallbacks(), &surface);
 		if(result != VK_SUCCESS)
-			GSIM_LOG_FATAL("Failed to create Xlib Vulkan window surface! Error code: %s", string_VkResult(result));
+			GSIM_LOG_FATAL("Failed to create XCB Vulkan window surface! Error code: %s", string_VkResult(result));
 #endif
 	}
 	void DestroyVulkanSurface() {

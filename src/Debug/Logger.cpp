@@ -1,6 +1,7 @@
 #include "Logger.hpp"
 #include "Manager/Parser.hpp"
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>

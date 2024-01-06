@@ -79,7 +79,7 @@ namespace gsim {
 		windowInfo.isMaximized = false;
 		windowInfo.isMinimized = false;
 
-		GSIM_LOG_INFO("Creates Win32 window");
+		GSIM_LOG_INFO("Created Win32 window");
 	}
 
 	static LRESULT CALLBACK WinProc(_In_ HWND hWnd, _In_ UINT message, _In_ WPARAM wParam, _In_ LPARAM lParam) {

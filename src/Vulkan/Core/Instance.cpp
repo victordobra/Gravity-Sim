@@ -3,6 +3,7 @@
 #include "ProjectInfo.hpp"
 #include "Debug/Logger.hpp"
 #include <stdint.h>
+#include <string.h>
 #include <vector>
 #include <unordered_set>
 
@@ -10,7 +11,7 @@
 #if defined(GSIM_PLATFORM_WINDOWS)
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(GSIM_PLATFORM_LINUX)
-#define VK_USE_PLATFORM_XLIB_KHR
+#define VK_USE_PLATFORM_XCB_KHR
 #endif
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_enum_string_helper.h>
@@ -28,7 +29,7 @@ namespace gsim {
 #if defined(GSIM_PLATFORM_WINDOWS)
 	#define VK_KHR_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 #elif defined(GSIM_PLATFORM_LINUX)
-	#define VK_KHR_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_XLIB_SURFACE_EXTENSION_NAME
+	#define VK_KHR_PLATFORM_SURFACE_EXTENSION_NAME VK_KHR_XCB_SURFACE_EXTENSION_NAME
 #endif
 
 	static const uint32_t MIN_API_VERSION = VK_API_VERSION_1_0;
