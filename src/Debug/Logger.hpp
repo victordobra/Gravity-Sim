@@ -1,77 +1,50 @@
 #pragma once
 
 #include <stdint.h>
-#include "Utils/BuildInfo.hpp"
+#include "Exception.hpp"
 
 namespace gsim {
-    /// @brief The danger level of a log message.
-    typedef enum {
-		/// @brief Used for debugging only. Not enabled during release by default.
-		LOG_LEVEL_DEBUG,
-		/// @brief Used to log information that might be relevant to the user.
-		LOG_LEVEL_INFO,
-		/// @brief Used to report unoptimal behaviour that doesn't cause the program to behave incorrectly.
-		LOG_LEVEL_WARNING,
-		/// @brief Used to report an error which is causing incorrect, yet non-fatal behaviour.
-		LOG_LEVEL_ERROR,
-		/// @brief Used to report a fatal error which instantly stops the program.
-		LOG_LEVEL_FATAL
-	} LogLevel;
+	class Logger {
+	public:
+		/// @brief An enum containing all message levels.
+		enum MessageLevel {
+			/// @brief The level of a debug message, useful for debugging.
+			MESSAGE_LEVEL_DEBUG = 0x01,
+			/// @brief The level of an info message that may give the user important information.
+			MESSAGE_LEVEL_INFO = 0x02,
+			/// @brief The level of a warning message that may indicate incorrect program behaviour.
+			MESSAGE_LEVEL_WARNING = 0x04,
+			/// @brief The level of an error message that indicates incorrect program behaviour.
+			MESSAGE_LEVEL_ERROR = 0x08,
+			/// @brief The level of a faltal error message that instantly closes the program.
+			MESSAGE_LEVEL_FATAL_ERROR = 0x10,
+		};
+		/// @brief The type of a bitmask containing zero or more message level flags.
+		typedef uint32_t MessageLevelFlags;
 
-	/// @brief Creates the debug logger.
-	void CreateLogger();
-	/// @brief Destroys the debug logger.
-	void DestroyLogger();
+		Logger() = delete;
+		Logger(const Logger&) = delete;
+		Logger(Logger&&) noexcept = delete;
+		/// @brief Creates a debug logger.
+		/// @param filePath The path of the log output file, or nullptr if no log file will be used.
+		/// @param messageLevelFlags A bitmask of the message level flags which will be parsed by the logger.
+		Logger(const char* filePath, MessageLevelFlags messageLevelFlags);
 
-	/// @brief Logs a message.
-	/// @param level The message level.
-	/// @param format The message string format.
-	void LogMessage(LogLevel level, const char* format, ...);
+		Logger& operator=(const Logger&) = delete;
+		Logger& operator=(Logger&&) = delete;
 
-#if defined(GSIM_BUILD_MODE_DEBUG)
-/// @brief Defined when debug messages are enabled for the logger.
-#define GSIM_LOG_DEBUG_ENABLED
-#endif
+		/// @brief Logs a message.
+		/// @param level The message's level.
+		/// @param format The format to use for the message.
+		void LogMessage(MessageLevel level, const char* format, ...);
+		/// @brief Logs an exception.
+		/// @param exception The exception to log.
+		void LogException(const Exception& exception);
 
-/// @brief Defined when warnings are enabled for the logger.
-#define GSIM_LOG_WARNING_ENABLED
-/// @brief Defined when info messages are enabled for the logger.
-#define GSIM_LOG_INFO_ENABLED
-
-#ifdef GSIM_LOG_DEBUG_ENABLED
-/// @brief Logs a debug message.
-/// @param format The message string format.
-#define GSIM_LOG_DEBUG(format, ...) gsim::LogMessage(gsim::LOG_LEVEL_DEBUG, format, ##__VA_ARGS__)
-#else
-/// @brief Logs a debug message.
-/// @param format The message string format.
-#define GSIM_LOG_DEBUG(format, ...)
-#endif
-
-#ifdef GSIM_LOG_INFO_ENABLED
-/// @brief Logs an info message.
-/// @param format The message string format.
-#define GSIM_LOG_INFO(format, ...) gsim::LogMessage(gsim::LOG_LEVEL_INFO, format, ##__VA_ARGS__)
-#else
-/// @brief Logs an info message.
-/// @param format The message string format.
-#define GSIM_LOG_INFO(format, ...)
-#endif
-
-#ifdef GSIM_LOG_WARNING_ENABLED
-/// @brief Logs a warning.
-/// @param format The message string format.
-#define GSIM_LOG_WARNING(format, ...) gsim::LogMessage(gsim::LOG_LEVEL_WARNING, format, ##__VA_ARGS__)
-#else
-/// @brief Logs a warning.
-/// @param format The message string format.
-#define GSIM_LOG_WARNING(format, ...)
-#endif
-
-/// @brief Logs an error.
-/// @param format The message string format.
-#define GSIM_LOG_ERROR(format, ...) gsim::LogMessage(gsim::LOG_LEVEL_ERROR, format, ##__VA_ARGS__)
-/// @brief Logs a fatal error.
-/// @param format The message string format.
-#define GSIM_LOG_FATAL(format, ...) gsim::LogMessage(gsim::LOG_LEVEL_FATAL, format, ##__VA_ARGS__)
+		/// @brief Destroys the debug logger.
+		~Logger();
+	private:
+		FILE* logFile;
+		MessageLevelFlags levelFlags;
+	};
 }

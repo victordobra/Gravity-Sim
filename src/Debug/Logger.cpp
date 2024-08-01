@@ -1,76 +1,88 @@
 #include "Logger.hpp"
-#include "Manager/Parser.hpp"
-#include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
-#include <unistd.h>
+#include <stdlib.h>
 
 namespace gsim {
 	// Constants
-	static const size_t MAX_MESSAGE_LENGTH = 16384;
+	static const size_t MAX_MESSAGE_LEN = 512;
 
-	static const char* const LOG_LEVEL_NAMES[] = {
-		"[DEBUG]:   ",
-		"[INFO]:    ",
-		"[WARNING]: ",
-		"[ERROR]:   ",
-		"[FATAL]:   "
-	};
-	static const size_t LOG_LEVEL_NAME_LENGTH = 11;
-
-	// Internal variables
-	static FILE* logFile;
-
-	void CreateLogger() {
-		// Check if no log file name was given
-		if(!GetLogFileName())
-			return;
-
-		// Open the log file
-		logFile = fopen(GetLogFileName(), "w");
-
-		if(!logFile)
-			GSIM_LOG_FATAL("Failed to open log file!");
-	}
-	void DestroyLogger() {
-		// Exit the function if no file was opened
-		if(!logFile)
-			return;
-
-		// Close the log file
-		fclose(logFile);
+	// Internal helper functions
+	static const char* MessageLevelToString(Logger::MessageLevel messageLevel) {
+		switch(messageLevel) {
+		case Logger::MESSAGE_LEVEL_DEBUG:
+			return "[DEBUG]       ";
+		case Logger::MESSAGE_LEVEL_INFO:
+			return "[INFO]        ";
+		case Logger::MESSAGE_LEVEL_WARNING:
+			return "[WARNING]     ";
+		case Logger::MESSAGE_LEVEL_ERROR:
+			return "[ERROR]       ";
+		case Logger::MESSAGE_LEVEL_FATAL_ERROR:
+			return "[FATAL ERROR] ";
+		default:
+			return "[LOG]         ";
+		}
 	}
 
-	void LogMessage(LogLevel level, const char* format, ...) {
-		// Exit the function if the message is not important and verbose logging is not enabled
-		if(level <= LOG_LEVEL_INFO && !IsVerbose())
-			return;
+	// Public functions
+	Logger::Logger(const char* filePath, MessageLevelFlags messageLevelFlags) : levelFlags(messageLevelFlags) {
+		// Check if a log file will be used
+		if(filePath) {
+			// Try to create the log file
+			logFile = fopen(filePath, "w");
+			if(!logFile)
+				LogMessage(MESSAGE_LEVEL_ERROR, "Failed to open log file! All log messages will be outputted only to the console.");
+		} else {
+			logFile = nullptr;
+		}
+	}
 
-		// Get the vague arguments list
+	void Logger::LogMessage(MessageLevel level, const char* format, ...) {
+		// Exit the function if the message level is not considered by the logger
+		if(!(level & levelFlags))
+			return;
+		
+		// Get the va list
 		va_list args;
 		va_start(args, format);
 
 		// Format the message
-		char message[LOG_LEVEL_NAME_LENGTH + MAX_MESSAGE_LENGTH + 1];
-		memcpy(message, LOG_LEVEL_NAMES[level], LOG_LEVEL_NAME_LENGTH);
-		vsnprintf(message + LOG_LEVEL_NAME_LENGTH, MAX_MESSAGE_LENGTH, format, args);
+		char message[MAX_MESSAGE_LEN];
+		vsnprintf(message, MAX_MESSAGE_LEN, format, args);
 
-		size_t formattedLen = strnlen(message, LOG_LEVEL_NAME_LENGTH + MAX_MESSAGE_LENGTH);
-		message[formattedLen] = '\n';
-
-		// Output the message to the console and the file
-		if(level >= LOG_LEVEL_ERROR)
-			fwrite(message, 1, formattedLen + 1, stderr);
-		else
-			fwrite(message, 1, formattedLen + 1, stdout);
-		if(logFile)
-			fwrite(message, 1, formattedLen + 1, logFile);
-
-		// End the vague arguments list
+		// End the va list
 		va_end(args);
 
-		// Exit the program if the current level is a fatal error
-		if(level == LOG_LEVEL_FATAL)
+		// Get the message level's string
+		const char* levelString = MessageLevelToString(level);
+
+		// Output the message to the log file, if it exists
+		if(logFile) {
+			fputs(levelString, logFile);
+			fputs(message, logFile);
+			fputc('\n', logFile);
+			fflush(logFile);
+		}
+
+		// Output the message to the console
+		fputs(levelString, stdout);
+		fputs(message, stdout);
+		fputc('\n', stdout);
+		fflush(stdout);
+
+		// Close the program if the messsage is a fatal error
+		if(level == MESSAGE_LEVEL_FATAL_ERROR)
 			abort();
+	}
+	void Logger::LogException(const Exception& exception) {
+		// Log a message containing the exception's info
+		LogMessage(MESSAGE_LEVEL_FATAL_ERROR, "Exception thrown at file \"%s\", line %u: \"%s\"", exception.GetFile(), exception.GetLine(), exception.GetMessage());
+	}
+
+	Logger::~Logger() {
+		// Close the log file stream, if it exists
+		if(logFile) {
+			fclose(logFile);
+		}
 	}
 }

@@ -1,9 +1,9 @@
 # Compilers
 set(CMAKE_x86_64_C_COMPILER   "x86_64 C compiler name/path")
-set(CMAKE_x86_64_CXX_COMPILER "x86_64 C compiler name/path")
+set(CMAKE_x86_64_CXX_COMPILER "x86_64 C++ compiler name/path")
 
 set(CMAKE_x64_C_COMPILER   "x64 C compiler name/path")
-set(CMAKE_x64_CXX_COMPILER "x64 C compiler name/path")
+set(CMAKE_x64_CXX_COMPILER "x64 C++ compiler name/path")
 
 # Build info
 set(TARGET_ARCH "x64")
