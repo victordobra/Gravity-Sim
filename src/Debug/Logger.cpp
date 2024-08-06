@@ -6,7 +6,7 @@ namespace gsim {
 	// Constants
 	static const size_t MAX_MESSAGE_LEN = 512;
 
-	// Internal helper functions
+	// Internal functions
 	static const char* MessageLevelToString(Logger::MessageLevel messageLevel) {
 		switch(messageLevel) {
 		case Logger::MESSAGE_LEVEL_DEBUG:
@@ -77,6 +77,10 @@ namespace gsim {
 	void Logger::LogException(const Exception& exception) {
 		// Log a message containing the exception's info
 		LogMessage(MESSAGE_LEVEL_FATAL_ERROR, "Exception thrown at file \"%s\", line %u: \"%s\"", exception.GetFile(), exception.GetLine(), exception.GetMessage());
+	}
+	void Logger::LogStdException(const std::exception& exception) {
+		// Log a message containing the exception's info
+		LogMessage(MESSAGE_LEVEL_FATAL_ERROR, "Standard library exception thrown: \"%s\"", exception.what());
 	}
 
 	Logger::~Logger() {

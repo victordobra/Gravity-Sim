@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <exception>
 #include "Exception.hpp"
 
 namespace gsim {
@@ -18,6 +19,8 @@ namespace gsim {
 			MESSAGE_LEVEL_ERROR = 0x08,
 			/// @brief The level of a faltal error message that instantly closes the program.
 			MESSAGE_LEVEL_FATAL_ERROR = 0x10,
+			/// @brief A bitmask containing the flags of all message levels.
+			MESSAGE_LEVEL_ALL = MESSAGE_LEVEL_DEBUG | MESSAGE_LEVEL_INFO | MESSAGE_LEVEL_WARNING | MESSAGE_LEVEL_ERROR | MESSAGE_LEVEL_FATAL_ERROR
 		};
 		/// @brief The type of a bitmask containing zero or more message level flags.
 		typedef uint32_t MessageLevelFlags;
@@ -40,6 +43,9 @@ namespace gsim {
 		/// @brief Logs an exception.
 		/// @param exception The exception to log.
 		void LogException(const Exception& exception);
+		/// @brief Logs a standard library exception.
+		/// @param exception The exception to log.
+		void LogStdException(const std::exception& exception);
 
 		/// @brief Destroys the debug logger.
 		~Logger();
