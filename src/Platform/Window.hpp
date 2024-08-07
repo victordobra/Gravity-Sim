@@ -8,6 +8,7 @@
 #endif
 
 namespace gsim {
+	/// @brief An implementation of a normal window to be used by the program.
 	class Window {
 	public:
 		/// @brief A struct containing the window's general info.
