@@ -13,23 +13,23 @@
 
 namespace gsim {
 	// Constants
-	static const char const* REQUIRED_INSTANCE_EXTENSIONS[] = {
+	static const char* const REQUIRED_INSTANCE_EXTENSIONS[] = {
 #if defined(WIN32)
 		VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
 		VK_KHR_SURFACE_EXTENSION_NAME
 	};
-	static const size_t REQUIRED_INSTANCE_EXTENSION_COUNT = sizeof(REQUIRED_INSTANCE_EXTENSIONS) / sizeof(const char const*);
+	static const size_t REQUIRED_INSTANCE_EXTENSION_COUNT = sizeof(REQUIRED_INSTANCE_EXTENSIONS) / sizeof(const char*);
 
-	static const char const* REQUIRED_INSTANCE_DEBUG_EXTENSIONS[] = {
+	static const char* const REQUIRED_INSTANCE_DEBUG_EXTENSIONS[] = {
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 	};
-	static const size_t REQUIRED_INSTANCE_DEBUG_EXTENSION_COUNT = sizeof(REQUIRED_INSTANCE_DEBUG_EXTENSIONS) / sizeof(const char const*);
+	static const size_t REQUIRED_INSTANCE_DEBUG_EXTENSION_COUNT = sizeof(REQUIRED_INSTANCE_DEBUG_EXTENSIONS) / sizeof(const char*);
 
-	static const char const* REQUIRED_INSTANCE_LAYERS[] = {
+	static const char* const REQUIRED_INSTANCE_LAYERS[] = {
 		"VK_LAYER_KHRONOS_validation"
 	};
-	static const size_t REQUIRED_INSTANCE_LAYER_COUNT = sizeof(REQUIRED_INSTANCE_LAYERS) / sizeof(const char const*);
+	static const size_t REQUIRED_INSTANCE_LAYER_COUNT = sizeof(REQUIRED_INSTANCE_LAYERS) / sizeof(const char*);
 
 	// Debug messenger callback
 	static VkBool32 DebugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -194,7 +194,8 @@ namespace gsim {
 		
 		// Create the debug messenger, if requested
 		if(validationEnabled) {
-			result = vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
+			auto pfnCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+			result = pfnCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
 			if(result != VK_SUCCESS)
 				GSIM_THROW_EXCEPTION("Failed to create Vulkan debug utils messenger! Error code: %s", string_VkResult(result));
 		}
@@ -205,8 +206,10 @@ namespace gsim {
 
     VulkanInstance::~VulkanInstance() {
 		// Destroy the debug messenger, if it exists
-		if(debugMessenger)
-			vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+		if(debugMessenger) {
+			auto pfnDestroyDebugUrilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+			pfnDestroyDebugUrilsMessengerEXT(instance, debugMessenger, nullptr);
+		}
 		
 		// Destroy the instance
 		vkDestroyInstance(instance, nullptr);
