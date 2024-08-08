@@ -2,6 +2,8 @@
 #include "Debug/Exception.hpp"
 #include "Debug/Logger.hpp"
 #include "Platform/Window.hpp"
+#include "Vulkan/VulkanInstance.hpp"
+#include "Vulkan/VulkanSurface.hpp"
 
 #include <stdint.h>
 #include <exception>
@@ -15,10 +17,18 @@ int main(int argc, char** args) {
 		// Create the window
 		gsim::Window* window = new gsim::Window(GSIM_PROJECT_NAME, 512, 512);
 
+		// Create the Vulkan components
+		gsim::VulkanInstance* instance = new gsim::VulkanInstance(true, &logger);
+		gsim::VulkanSurface* surface = new gsim::VulkanSurface(instance, window);
+
 		// Parse the window's events, as long as it is running
 		while(window->GetWindowInfo().running) {
 			window->ParseEvents();
 		}
+
+		// Destroy the Vulkan components
+		delete surface;
+		delete instance;
 
 		// Destroy the window
 		delete window;
