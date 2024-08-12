@@ -69,5 +69,5 @@ namespace gsim {
 
 /// @brief Throws an exception with info on the current file and line.
 /// @param format The format to use for the exception's message.
-#define GSIM_THROW_EXCEPTION(format, ...) throw gsim::Exception(__FILE__, __LINE__, format __VA_OPT__(,) __VA_ARGS__);
+#define GSIM_THROW_EXCEPTION(format, ...) throw gsim::Exception(__FILE__, __LINE__, format __VA_OPT__(,) __VA_ARGS__)
 }

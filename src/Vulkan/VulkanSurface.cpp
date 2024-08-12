@@ -1,4 +1,5 @@
 #include "VulkanSurface.hpp"
+#include "Debug/Exception.hpp"
 
 #if defined(WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -25,6 +26,8 @@ namespace gsim {
 
 		// Create the Win32 surface
 		VkResult result = vkCreateWin32SurfaceKHR(instance->GetInstance(), &createInfo, nullptr, &surface);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan surface! Error code: %s", string_VkResult(result));
 #endif
 	}
 
