@@ -198,10 +198,14 @@ namespace gsim {
 			result = pfnCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
 			if(result != VK_SUCCESS)
 				GSIM_THROW_EXCEPTION("Failed to create Vulkan debug utils messenger! Error code: %s", string_VkResult(result));
+		} else {
+			debugMessenger = VK_NULL_HANDLE;
 		}
 
 		// Free the extension array, if allocated
-		free(extensions);
+		if(validationEnabled) {
+			free(extensions);
+		}
 	}
 
     VulkanInstance::~VulkanInstance() {
