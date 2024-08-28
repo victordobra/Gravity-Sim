@@ -189,7 +189,8 @@ namespace gsim {
 		if(!physicalDevice)
 			GSIM_THROW_EXCEPTION("Failed to find suitable Vulkan physical device!");
 		
-		// Get the physical device's features and queue family indices
+		// Get the physical device's remaining properties
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 		vkGetPhysicalDeviceFeatures(physicalDevice, &features);
 		indices = FindQueueFamilyIndices(physicalDevice, surface);
 
@@ -295,6 +296,22 @@ namespace gsim {
 
 		// Free the queue families array
 		free(families);
+	}
+
+	uint32_t VulkanDevice::GetMemoryTypeIndex(VkMemoryPropertyFlags propertyFlags, uint32_t memoryTypeBits) {
+		// Loop through all supported memory types
+		for(uint32_t i = 0; i != memoryProperties.memoryTypeCount; ++i) {
+			// Skip the current memory type if its index is not set in the bitmask
+			if(!((1 << i) & memoryTypeBits))
+				continue;
+			
+			// Return the current memory type if all property flags are supported
+			if((propertyFlags & memoryProperties.memoryTypes[i].propertyFlags) == propertyFlags)
+				return i;
+		}
+
+		// No soutable memory type was found; return UINT32_MAX
+		return UINT32_MAX;
 	}
 
 	VulkanDevice::~VulkanDevice() {

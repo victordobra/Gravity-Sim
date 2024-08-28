@@ -65,6 +65,11 @@ namespace gsim {
 		const VkPhysicalDeviceProperties& GetPhysicalDeviceProperties() const {
 			return properties;
 		}
+		/// @brief Gets the Vulkan physical device's memory properties.
+		/// @return A struct containing the physical device's memory properties.
+		const VkPhysicalDeviceMemoryProperties& GetPhysicalDeviceMemoryProperties() const {
+			return memoryProperties;
+		}
 		/// @brief Gets the Vulkan physical device's properties.
 		/// @return A struct containing the physical device's properties.
 		const VkPhysicalDeviceFeatures& GetPhysicalDeviceFeatures() const {
@@ -92,6 +97,12 @@ namespace gsim {
 			return computeQueue;
 		}
 
+		/// @brief Finds a memory type with all required properties.
+		/// @param propertyFlags The property flags required for the memory type.
+		/// @param memoryTypeBits The bitmask in which the index of the memory type must be set.
+		/// @return The index of the first memory type with all required properties, or UINT32_MAX if no such memory type exists.
+		uint32_t GetMemoryTypeIndex(VkMemoryPropertyFlags propertyFlags, uint32_t memoryTypeBits);
+
 		/// @brief Destroys the Vulkan device.
 		~VulkanDevice();
 	private:
@@ -101,6 +112,7 @@ namespace gsim {
 		VkPhysicalDevice physicalDevice;
 		QueueFamilyIndices indices;
 		VkPhysicalDeviceProperties properties;
+		VkPhysicalDeviceMemoryProperties memoryProperties;
 		VkPhysicalDeviceFeatures features;
 
 		VkQueue graphicsQueue = VK_NULL_HANDLE;
