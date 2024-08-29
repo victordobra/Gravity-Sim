@@ -211,20 +211,20 @@ namespace gsim {
 		VkDeviceQueueCreateInfo queueInfos[4];
 		float queuePriorities[4]{ 1.f, 1.f, 1.f, 1.f };
 
-		uint32_t indexArr[4]{ indices.graphicsIndex, indices.presentIndex, indices.transferIndex, indices.computeIndex };
+		uint32_t familyIndexArr[4]{ indices.graphicsIndex, indices.presentIndex, indices.transferIndex, indices.computeIndex };
 		uint32_t infoIndices[4];
 		for(uint32_t i = 0; i != 4; ++i) {
 			// Skip the current queue family index if it is not valid
-			if(indexArr[i] == UINT32_MAX)
+			if(familyIndexArr[i] == UINT32_MAX)
 				continue;
 			
 			// Check if the current queue family is already in use
 			bool exists = false;
 			for(uint32_t j = 0; j != queueInfoCount && !exists; ++j) {
-				if(queueInfos[j].queueFamilyIndex == indexArr[i]) {
+				if(queueInfos[j].queueFamilyIndex == familyIndexArr[i]) {
 					// Check if there is still room for another queue in the current family
-					if(families[indexArr[i]].queueCount) {
-						--families[indexArr[i]].queueCount;
+					if(families[familyIndexArr[i]].queueCount) {
+						--families[familyIndexArr[i]].queueCount;
 						++queueInfos[j].queueCount;
 					}
 
@@ -233,18 +233,22 @@ namespace gsim {
 				}
 			}
 
-			// Set a new queue info if one doesn't already exist
+			// Check if an identical queue info doesn't already exist
 			if(!exists) {
+				// Set a new queue info
 				queueInfos[queueInfoCount].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 				queueInfos[queueInfoCount].pNext = nullptr;
 				queueInfos[queueInfoCount].flags = 0;
-				queueInfos[queueInfoCount].queueFamilyIndex = indexArr[i];
+				queueInfos[queueInfoCount].queueFamilyIndex = familyIndexArr[i];
 				queueInfos[queueInfoCount].queueCount = 1;
 				queueInfos[queueInfoCount].pQueuePriorities = queuePriorities;
-				--families[indexArr[i]].queueCount;
+				--families[familyIndexArr[i]].queueCount;
 
 				infoIndices[i] = queueInfoCount;
 				++queueInfoCount;
+
+				//Aadd the queue family index to the array
+				indexArr[indexArrSize++] = familyIndexArr[i];
 			}
 		}
 
@@ -280,8 +284,8 @@ namespace gsim {
 		
 		// Reset the queue counts
 		for(uint32_t i = 0; i != 4; ++i) {
-			if(indexArr[i] != UINT32_MAX)
-				families[indexArr[i]].queueCount = 0;
+			if(familyIndexArr[i] != UINT32_MAX)
+				families[familyIndexArr[i]].queueCount = 0;
 		}
 
 		// Get the device queues

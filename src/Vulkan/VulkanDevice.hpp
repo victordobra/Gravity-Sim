@@ -76,6 +76,17 @@ namespace gsim {
 			return features;
 		}
 
+		/// @brief Gets the size of the array containing all unique queue family indices.
+		/// @return The size of the array containing all unique queue family indices.
+		uint32_t GetQueueFamilyIndexArraySize() const {
+			return indexArrSize;
+		}
+		/// @brief Gets the array containing all unique queue family indices.
+		/// @return A pointer to the array containing all unique queue family indices.
+		const uint32_t* GetQueueFamilyIndexArray() const {
+			return indexArr;
+		}
+
 		/// @brief Gets the Vulkan logical device's graphics queue.
 		/// @return A handle to the graphics queue, or VK_NULL_HANDLE if the device isn't uded for graphics.
 		VkQueue GetGraphicsQueue() {
@@ -114,6 +125,9 @@ namespace gsim {
 		VkPhysicalDeviceProperties properties;
 		VkPhysicalDeviceMemoryProperties memoryProperties;
 		VkPhysicalDeviceFeatures features;
+
+		uint32_t indexArrSize;
+		uint32_t indexArr[4];
 
 		VkQueue graphicsQueue = VK_NULL_HANDLE;
 		VkQueue presentQueue = VK_NULL_HANDLE;
