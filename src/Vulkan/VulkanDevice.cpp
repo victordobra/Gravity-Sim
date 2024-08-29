@@ -293,13 +293,50 @@ namespace gsim {
 			vkGetDeviceQueue(device, indices.graphicsIndex, families[indices.graphicsIndex].queueCount++, &graphicsQueue);
 		if(indices.presentIndex != UINT32_MAX)
 			vkGetDeviceQueue(device, indices.presentIndex, families[indices.presentIndex].queueCount++, &presentQueue);
-		if(indices.transferIndex != UINT32_MAX)
-			vkGetDeviceQueue(device, indices.transferIndex, families[indices.transferIndex].queueCount++, &transferQueue);
-		if(indices.computeIndex != UINT32_MAX)
-			vkGetDeviceQueue(device, indices.computeIndex, families[indices.computeIndex].queueCount++, &computeQueue);
+
+		vkGetDeviceQueue(device, indices.transferIndex, families[indices.transferIndex].queueCount++, &transferQueue);
+		vkGetDeviceQueue(device, indices.computeIndex, families[indices.computeIndex].queueCount++, &computeQueue);
 
 		// Free the queue families array
 		free(families);
+
+		// Create the graphics command pool, if graphics are used
+		if(indices.graphicsIndex != UINT32_MAX) {
+			VkCommandPoolCreateInfo graphicsCommandPoolInfo {
+				.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+				.queueFamilyIndex = indices.graphicsIndex
+			};
+
+			result = vkCreateCommandPool(device, &graphicsCommandPoolInfo, nullptr, &graphicsCommandPool);
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to create Vulkan graphics command pool! Error code: %s", string_VkResult(result));
+		}
+
+		// Create the transfer command pool
+		VkCommandPoolCreateInfo transferCommandPoolInfo {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.queueFamilyIndex = indices.transferIndex
+		};
+
+		result = vkCreateCommandPool(device, &transferCommandPoolInfo, nullptr, &transferCommandPool);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan transfer command pool! Error code: %s", string_VkResult(result));
+
+		// Create the compute command pool
+		VkCommandPoolCreateInfo computeCommandPoolInfo {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.queueFamilyIndex = indices.computeIndex
+		};
+
+		result = vkCreateCommandPool(device, &computeCommandPoolInfo, nullptr, &computeCommandPool);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan compute command pool! Error code: %s", string_VkResult(result));
 	}
 
 	uint32_t VulkanDevice::GetMemoryTypeIndex(VkMemoryPropertyFlags propertyFlags, uint32_t memoryTypeBits) {
@@ -319,6 +356,13 @@ namespace gsim {
 	}
 
 	VulkanDevice::~VulkanDevice() {
+		// Destroy all command pools
+		if(graphicsCommandPool)
+			vkDestroyCommandPool(device, graphicsCommandPool, nullptr);
+		
+		vkDestroyCommandPool(device, transferCommandPool, nullptr);
+		vkDestroyCommandPool(device, computeCommandPool, nullptr);
+
 		// Wait for the device to idle and destroy it
 		vkDeviceWaitIdle(device);
 		vkDestroyDevice(device, nullptr);

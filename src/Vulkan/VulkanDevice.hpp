@@ -88,12 +88,12 @@ namespace gsim {
 		}
 
 		/// @brief Gets the Vulkan logical device's graphics queue.
-		/// @return A handle to the graphics queue, or VK_NULL_HANDLE if the device isn't uded for graphics.
+		/// @return A handle to the graphics queue, or VK_NULL_HANDLE if the device isn't used for graphics.
 		VkQueue GetGraphicsQueue() {
 			return graphicsQueue;
 		}
 		/// @brief Gets the Vulkan logical device's present queue.
-		/// @return A handle to the present queue, or VK_NULL_HANDLE if the device isn't uded for graphics.
+		/// @return A handle to the present queue, or VK_NULL_HANDLE if the device isn't used for graphics.
 		VkQueue GetPresentQueue() {
 			return presentQueue;
 		}
@@ -106,6 +106,22 @@ namespace gsim {
 		/// @return A handle to the compute queue.
 		VkQueue GetComputeQueue() {
 			return computeQueue;
+		}
+
+		/// @brief Gets the Vulkan command pool bound to the graphics queue.
+		/// @return A handle to the graphics command pool, or VK_NULL_HANDLE if the device isn't used for graphics.
+		VkCommandPool GetGraphicsCommandPool() {
+			return graphicsCommandPool;
+		}
+		/// @brief Gets the Vulkan command pool bound to the transfer queue.
+		/// @return A handle to the transfer command pool.
+		VkCommandPool GetTransferCommandPool() {
+			return transferCommandPool;
+		}
+		/// @brief Gets the Vulkan command pool bound to the compute queue.
+		/// @return A handle to the compute command pool.
+		VkCommandPool GetComputeCommandPool() {
+			return computeCommandPool;
 		}
 
 		/// @brief Finds a memory type with all required properties.
@@ -126,12 +142,16 @@ namespace gsim {
 		VkPhysicalDeviceMemoryProperties memoryProperties;
 		VkPhysicalDeviceFeatures features;
 
-		uint32_t indexArrSize;
+		uint32_t indexArrSize = 0;
 		uint32_t indexArr[4];
 
 		VkQueue graphicsQueue = VK_NULL_HANDLE;
 		VkQueue presentQueue = VK_NULL_HANDLE;
 		VkQueue transferQueue;
 		VkQueue computeQueue;
+
+		VkCommandPool graphicsCommandPool = VK_NULL_HANDLE;
+		VkCommandPool transferCommandPool;
+		VkCommandPool computeCommandPool;
 	};
 }
