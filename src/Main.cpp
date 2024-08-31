@@ -1,6 +1,8 @@
 #include "ProjectInfo.hpp"
 #include "Debug/Exception.hpp"
 #include "Debug/Logger.hpp"
+#include "Particles/Particle.hpp"
+#include "Particles/ParticleSystem.hpp"
 #include "Platform/Window.hpp"
 #include "Vulkan/VulkanDevice.hpp"
 #include "Vulkan/VulkanInstance.hpp"
@@ -25,10 +27,16 @@ int main(int argc, char** args) {
 		gsim::VulkanDevice* device = new gsim::VulkanDevice(instance, surface);
 		gsim::VulkanSwapChain* swapChain = new gsim::VulkanSwapChain(device, surface);
 
+		// Create the particle system
+		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 1024, gsim::ParticleSystem::GENERATE_TYPE_GALAXY, 200, 1, 100, 1000, 1, .0001f, .1f);
+
 		// Parse the window's events, as long as it is running
 		while(window->GetWindowInfo().running) {
 			window->ParseEvents();
 		}
+
+		// Destroy the particle system
+		delete particleSystem;
 
 		// Destroy the Vulkan components
 		delete swapChain;
