@@ -19,7 +19,7 @@ int main(int argc, char** args) {
 	// Catch any exceptions thrown by the rest of the program
 	try {
 		// Create the window
-		gsim::Window* window = new gsim::Window(GSIM_PROJECT_NAME, 512, 512);
+		gsim::Window* window = new gsim::Window(GSIM_PROJECT_NAME, 800, 800);
 
 		// Create the Vulkan components
 		gsim::VulkanInstance* instance = new gsim::VulkanInstance(true, &logger);

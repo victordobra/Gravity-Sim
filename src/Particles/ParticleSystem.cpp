@@ -203,23 +203,6 @@ namespace gsim {
 		vkFreeMemory(device->GetDevice(), stagingMemory, nullptr);
 		vkDestroyFence(device->GetDevice(), transferFence, nullptr);
 		vkDestroyBuffer(device->GetDevice(), stagingBuffer, nullptr);
-
-		// Set the fence create info
-		VkFenceCreateInfo fenceInfo {
-			.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = VK_FENCE_CREATE_SIGNALED_BIT
-		};
-
-		// Create the graphics and compute fences
-		result = vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &graphicsFence);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan particle graphics fence! Error code: %s", string_VkResult(result));
-		
-
-		result = vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &computeFence);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan particle compute fence! Error code: %s", string_VkResult(result));
 	}
 	void ParticleSystem::GenerateParticlesRandom(Particle* particles, float generateSize, float minMass, float maxMass) {
 		// Set the random seed
@@ -431,11 +414,6 @@ namespace gsim {
 	}
 	
 	void ParticleSystem::GetParticles(Particle* particles) {
-		// Wait for the compute operations to finish
-		VkResult result = vkWaitForFences(device->GetDevice(), 1, &computeFence, VK_TRUE, UINT64_MAX);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to wait for VUlkan particle synchronization compute fence! Error code: %s", string_VkResult(result));
-
 		// Set the staging buffer create info
 		uint32_t transferIndex = device->GetQueueFamilyIndices().transferIndex;
 
@@ -452,7 +430,7 @@ namespace gsim {
 
 		// Create the staging buffer
 		VkBuffer stagingBuffer;
-		result = vkCreateBuffer(device->GetDevice(), &stagingBufferInfo, nullptr, &stagingBuffer);
+		VkResult result = vkCreateBuffer(device->GetDevice(), &stagingBufferInfo, nullptr, &stagingBuffer);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan particle staging buffer! Error code: %s", string_VkResult(result));
 
@@ -579,11 +557,6 @@ namespace gsim {
 		// Destroy the staging buffer
 		vkFreeMemory(device->GetDevice(), stagingMemory, nullptr);
 		vkDestroyBuffer(device->GetDevice(), stagingBuffer, nullptr);
-
-		// Resignal the compute fence
-		result = vkQueueSubmit(device->GetComputeQueue(), 0, nullptr, computeFence);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to resignal Vulkan compute fence! Error code: %s");
 	}
 	void ParticleSystem::SaveParticles(const char* filePath) {
 		// Open the file stream
@@ -611,13 +584,7 @@ namespace gsim {
 	}
 
 	ParticleSystem::~ParticleSystem() {
-		// Wait for the Vulkan fences
-		VkFence fences[] { graphicsFence, computeFence };
-		vkWaitForFences(device->GetDevice(), 2, fences, VK_TRUE, UINT64_MAX);
-
 		// Destroy all Vulkan objects
-		vkDestroyFence(device->GetDevice(), graphicsFence, nullptr);
-		vkDestroyFence(device->GetDevice(), computeFence, nullptr);
 		vkFreeMemory(device->GetDevice(), bufferMemory, nullptr);
 		for(uint32_t i = 0; i != 3; ++i)
 			vkDestroyBuffer(device->GetDevice(), buffers[i], nullptr);

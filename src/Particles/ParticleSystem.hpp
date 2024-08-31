@@ -95,16 +95,6 @@ namespace gsim {
 		VkDeviceMemory GetBufferMemory() {
 			return bufferMemory;
 		}
-		/// @brief Gets the Vulkan fence which waits for graphics operations.
-		/// @return The Vulkan fence which waits for graphics operations.
-		VkFence GetGraphicsFence() {
-			return graphicsFence;
-		}
-		/// @brief Gets the Vulkan fence which waits for compute operations.
-		/// @return The Vulkan fence which waits for compute operations.
-		VkFence GetComputeFence() {
-			return computeFence;
-		}
 
 		/// @brief Gets the index of the particle buffer to use for graphics.
 		/// @return The index of the particle buffer to use for graphics.
@@ -166,8 +156,6 @@ namespace gsim {
 		
 		VkBuffer buffers[3];
 		VkDeviceMemory bufferMemory;
-		VkFence graphicsFence;
-		VkFence computeFence;
 
 		size_t graphicsIndex = 0;
 		size_t computeInputIndex = 1;
