@@ -3,6 +3,8 @@
 #include "Particle.hpp"
 #include "Vulkan/VulkanDevice.hpp"
 #include <stdint.h>
+#include <vulkan/vk_platform.h>
+#include <vulkan/vulkan_core.h>
 
 namespace gsim {
 	/// @brief A class defining a system of one or more particles.

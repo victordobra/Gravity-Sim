@@ -1,6 +1,7 @@
 #include "ProjectInfo.hpp"
 #include "Debug/Exception.hpp"
 #include "Debug/Logger.hpp"
+#include "Graphics/GraphicsPipeline.hpp"
 #include "Particles/Particle.hpp"
 #include "Particles/ParticleSystem.hpp"
 #include "Platform/Window.hpp"
@@ -28,12 +29,22 @@ int main(int argc, char** args) {
 		gsim::VulkanSwapChain* swapChain = new gsim::VulkanSwapChain(device, surface);
 
 		// Create the particle system
-		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 1024, gsim::ParticleSystem::GENERATE_TYPE_GALAXY, 200, 1, 100, 1000, 1, .0001f, .1f);
+		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 2048, gsim::ParticleSystem::GENERATE_TYPE_GALAXY, 200, 1, 100, 500, 1, .0001f, .1f);
 
-		// Parse the window's events, as long as it is running
+		// Create the pipelines
+		gsim::GraphicsPipeline* graphicsPipeline = new gsim::GraphicsPipeline(device, swapChain, particleSystem);
+
+		// Run the window's loop
 		while(window->GetWindowInfo().running) {
+			// Parse the window's events
 			window->ParseEvents();
+
+			// Render the particles
+			graphicsPipeline->RenderParticles();
 		}
+
+		// Destroy the pipelines
+		delete graphicsPipeline;
 
 		// Destroy the particle system
 		delete particleSystem;
