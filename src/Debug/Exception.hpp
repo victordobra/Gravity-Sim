@@ -60,7 +60,7 @@ namespace gsim {
 		/// @brief Destroys the exception.
 		~Exception() = default;
 	private:
-		static const size_t MAX_MESSAGE_LEN = 256;
+		static const size_t MAX_MESSAGE_LEN = 512;
 
 		const char* file;
 		uint32_t line;

@@ -4,7 +4,7 @@
 
 namespace gsim {
 	// Constants
-	static const size_t MAX_MESSAGE_LEN = 512;
+	static const size_t MAX_MESSAGE_LEN = 2048;
 
 	// Internal functions
 	static const char* MessageLevelToString(Logger::MessageLevel messageLevel) {
