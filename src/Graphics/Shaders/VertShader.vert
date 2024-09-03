@@ -4,7 +4,6 @@
 layout(location = 0) in vec2 pos;
 layout(location = 1) in vec2 vel;
 layout(location = 2) in float mass;
-layout(location = 3) in float invMass;
 
 // Push constants
 layout(push_constant) uniform PushConstants {

@@ -220,9 +220,8 @@ namespace gsim {
 			// Set the particle's velocity to zero
 			particles[i].vel = { 0, 0 };
 
-			// Generate the particle's mass and set its inverse
+			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
-			particles[i].invMass = 1 / particles[i].mass;
 		}
 	}
 	void ParticleSystem::GenerateParticlesGalaxy(Particle* particles, float generateSize, float minMass, float maxMass) {
@@ -244,9 +243,8 @@ namespace gsim {
 			// Set the particle's velocity to slowly orbit the galaxy's center
 			particles[i].vel = { -thetaSin * generateSize * .02f, thetaCos * generateSize * .02f };
 
-			// Generate the particle's mass and set its inverse
+			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
-			particles[i].invMass = 1 / particles[i].mass;
 		}
 	}
 	void ParticleSystem::GenerateParticlesGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass) {
@@ -269,9 +267,8 @@ namespace gsim {
 			// Set the particle's velocity to slowly orbit the galaxy's center
 			particles[i].vel = { -thetaSin * galaxySize * .02f + galaxySize * 0.2f, thetaCos * galaxySize * .02f };
 
-			// Generate the particle's mass and set its inverse
+			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
-			particles[i].invMass = 1 / particles[i].mass;
 		}
 
 		// Generate avery particle in the second galaxy
@@ -289,9 +286,8 @@ namespace gsim {
 			// Set the particle's velocity to slowly orbit the galaxy's center
 			particles[i].vel = { -thetaSin * galaxySize * .02f - galaxySize * 0.2f, thetaCos * galaxySize * .02f };
 
-			// Generate the particle's mass and set its inverse
+			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
-			particles[i].invMass = 1 / particles[i].mass;
 		}
 	}
 	void ParticleSystem::GenerateParticlesSymmetricalGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass) {
@@ -314,15 +310,13 @@ namespace gsim {
 			// Set the particle's velocity to slowly orbit the galaxy's center
 			particles[i].vel = { -thetaSin * galaxySize * .02f + galaxySize * 0.2f, thetaCos * galaxySize * .02f };
 
-			// Generate the particle's mass and set its inverse
+			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
-			particles[i].invMass = 1 / particles[i].mass;
 
 			// Mirror the particle from the first galaxy in the second
 			particles[i + 1].pos = { -particles[i].pos.x, particles[i].pos.y };
 			particles[i + 1].vel = { -particles[i].vel.x, particles[i].vel.y };
 			particles[i + 1].mass = particles[i].mass;
-			particles[i + 1].invMass = particles[i].invMass;
 		}
 	}
 
@@ -342,9 +336,6 @@ namespace gsim {
 		// Load particles from the given file until none are left
 		Particle particle;
 		while(fscanf(fileInput, "%f%f%f%f%f", &particle.pos.x, &particle.pos.y, &particle.vel.x, &particle.vel.y, &particle.mass) == 5) {
-			// Set the particle's inverse mass
-			particle.invMass = 1 / particle.mass;
-
 			// Check if there is room in the array for the new particle
 			++particleCount;
 			if(particleCount > particleCapacity) {

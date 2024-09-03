@@ -118,12 +118,6 @@ namespace gsim {
 				.binding = 0,
 				.format = VK_FORMAT_R32_SFLOAT,
 				.offset = offsetof(Particle, mass)
-			},
-			{
-				.location = 3,
-				.binding = 0,
-				.format = VK_FORMAT_R32_SFLOAT,
-				.offset = offsetof(Particle, invMass)
 			}
 		};
 
@@ -134,7 +128,7 @@ namespace gsim {
 			.flags = 0,
 			.vertexBindingDescriptionCount = 1,
 			.pVertexBindingDescriptions = &vertexBinding,
-			.vertexAttributeDescriptionCount = 4,
+			.vertexAttributeDescriptionCount = 3,
 			.pVertexAttributeDescriptions = vertexAttribures
 		};
 

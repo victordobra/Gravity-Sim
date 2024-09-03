@@ -8,6 +8,7 @@
 #include <vulkan/vulkan_core.h>
 
 namespace gsim {
+	/// @brief A graphics pipeline which renders particles.
 	class GraphicsPipeline {
 	public:
 		GraphicsPipeline() = delete;

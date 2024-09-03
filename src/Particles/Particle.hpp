@@ -29,7 +29,5 @@ namespace gsim {
 		Vec2 vel;
 		/// @brief The particle's mass.
 		float mass;
-		/// @brief The inverse of the particle's mass.
-		float invMass;
 	};
 }
