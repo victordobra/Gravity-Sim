@@ -38,7 +38,7 @@ int main(int argc, char** args) {
 		gsim::DirectSimulation* simulation = new gsim::DirectSimulation(device, particleSystem);
 
 		// Run the window's loop
-		uint64_t simulationCount = 10000, targetSimulationCount = 0;
+		uint64_t simulationCount = 0, targetSimulationCount = 0;
 		clock_t clockStart = clock();
 
 		while(window->GetWindowInfo().running) {
@@ -46,10 +46,8 @@ int main(int argc, char** args) {
 			window->ParseEvents();
 
 			// Run the simulations
-			if(simulationCount < targetSimulationCount) {
-				simulation->RunSimulations(targetSimulationCount - simulationCount);
-				simulationCount = targetSimulationCount;
-			}
+			simulation->RunSimulations(targetSimulationCount - simulationCount);
+			simulationCount = targetSimulationCount;
 
 			// Render the particles
 			graphicsPipeline->RenderParticles();
