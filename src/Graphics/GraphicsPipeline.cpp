@@ -424,6 +424,7 @@ namespace gsim {
 		vkWaitForFences(device->GetDevice(), 1, &renderingFence, VK_TRUE, UINT64_MAX);
 
 		// Destroy the pipeline's objects
+		vkFreeCommandBuffers(device->GetDevice(), device->GetGraphicsCommandPool(), 1, &commandBuffer);
 		vkDestroyFence(device->GetDevice(), renderingFence, nullptr);
 		vkDestroySemaphore(device->GetDevice(), imageAvailableSemaphore, nullptr);
 		vkDestroySemaphore(device->GetDevice(), renderingFinishedSemaphore, nullptr);
