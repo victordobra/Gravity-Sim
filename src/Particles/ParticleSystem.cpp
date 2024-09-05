@@ -232,7 +232,8 @@ namespace gsim {
 		for(size_t i = 0; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar
 			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
-			float r = ((float)rand() / RAND_MAX) * generateSize;
+			float rNorm = (float)rand() / RAND_MAX;
+			float r = rNorm * generateSize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -241,7 +242,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * generateSize * .02f, thetaCos * generateSize * .02f };
+			particles[i].vel = { -thetaSin * r * .05f, thetaCos * r * .05f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -256,7 +257,8 @@ namespace gsim {
 		for(size_t i = 0; i != particleCount >> 1; ++i) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
 			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
-			float r = ((float)rand() / RAND_MAX) * galaxySize;
+			float rNorm = (float)rand() / RAND_MAX;
+			float r = rNorm * galaxySize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -265,7 +267,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos - galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * galaxySize * .02f + galaxySize * 0.2f, thetaCos * galaxySize * .02f };
+			particles[i].vel = { -thetaSin * r * .02f + galaxySize * 0.1f, thetaCos * r * .02f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -275,7 +277,8 @@ namespace gsim {
 		for(size_t i = particleCount >> 1; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
 			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
-			float r = ((float)rand() / RAND_MAX) * galaxySize;
+			float rNorm = (float)rand() / RAND_MAX;
+			float r = rNorm * galaxySize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -284,7 +287,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos + galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * galaxySize * .02f - galaxySize * 0.2f, thetaCos * galaxySize * .02f };
+			particles[i].vel = { -thetaSin * r * .02f - galaxySize * 0.1f, thetaCos * r * .02f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -299,7 +302,8 @@ namespace gsim {
 		for(size_t i = 0; i != particleCount; i += 2) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
 			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
-			float r = ((float)rand() / RAND_MAX) * galaxySize;
+			float rNorm = (float)rand() / RAND_MAX;
+			float r = rNorm * galaxySize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -308,7 +312,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos - galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * galaxySize * .02f + galaxySize * 0.2f, thetaCos * galaxySize * .02f };
+			particles[i].vel = { -thetaSin * r * .02f + galaxySize * 0.2f, thetaCos * r * .02f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -365,7 +369,7 @@ namespace gsim {
 		// Free the particles array
 		free(particles);
 	}
-	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softenigLen) : device(device), particleCount(particleCount), systemSize(systemSize), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
+	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softeningLen) : device(device), particleCount(particleCount), systemSize(systemSize), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
 		// Round the particle count down to the nearest even integer if the generate type is set to GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION
 		if(generateType == GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION) {
 			particleCount &= ~1;

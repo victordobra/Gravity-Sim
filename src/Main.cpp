@@ -5,12 +5,14 @@
 #include "Particles/Particle.hpp"
 #include "Particles/ParticleSystem.hpp"
 #include "Platform/Window.hpp"
+#include "Simulation/Direct/DirectSimulation.hpp"
 #include "Vulkan/VulkanDevice.hpp"
 #include "Vulkan/VulkanInstance.hpp"
 #include "Vulkan/VulkanSurface.hpp"
 #include "Vulkan/VulkanSwapChain.hpp"
 
 #include <stdint.h>
+#include <time.h>
 #include <exception>
 
 int main(int argc, char** args) {
@@ -29,22 +31,38 @@ int main(int argc, char** args) {
 		gsim::VulkanSwapChain* swapChain = new gsim::VulkanSwapChain(device, surface);
 
 		// Create the particle system
-		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 2048, gsim::ParticleSystem::GENERATE_TYPE_GALAXY, 200, 1, 100, 500, 1, .0001f, .1f);
+		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 12000, gsim::ParticleSystem::GENERATE_TYPE_GALAXY_COLLISION, 200, 10, 100, 500, .5f, .001f, .3f);
 
 		// Create the pipelines
 		gsim::GraphicsPipeline* graphicsPipeline = new gsim::GraphicsPipeline(device, swapChain, particleSystem);
+		gsim::DirectSimulation* simulation = new gsim::DirectSimulation(device, particleSystem);
 
 		// Run the window's loop
+		uint64_t simulationCount = 10000, targetSimulationCount = 0;
+		clock_t clockStart = clock();
+
 		while(window->GetWindowInfo().running) {
 			// Parse the window's events
 			window->ParseEvents();
 
+			// Run the simulations
+			if(simulationCount < targetSimulationCount) {
+				simulation->RunSimulations(targetSimulationCount - simulationCount);
+				simulationCount = targetSimulationCount;
+			}
+
 			// Render the particles
 			graphicsPipeline->RenderParticles();
+
+			// Store the clock end and calculate the target simulation count
+			clock_t clockEnd = clock();
+			targetSimulationCount = (uint64_t)((float)clock() / CLOCKS_PER_SEC / .001f);
+			clockStart = clockEnd;
 		}
 
 		// Destroy the pipelines
 		delete graphicsPipeline;
+		delete simulation;
 
 		// Destroy the particle system
 		delete particleSystem;

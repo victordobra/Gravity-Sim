@@ -1,0 +1,74 @@
+#version 430
+
+// Particle struct
+struct Particle {
+	vec2 pos;
+	vec2 vel;
+	float mass;
+};
+
+// Particle buffers
+layout(set = 0, binding = 0) buffer ParticleInBuffer {
+	Particle particlesIn[];
+};
+layout(set = 1, binding = 0) buffer ParticleOutBuffer {
+	Particle particlesOut[];
+};
+
+// Push constants
+layout(push_constant) uniform PushConstants {
+	float systemSize;
+	float simulationTime;
+	float gravitationalConst;
+	float softeningLenSqr;
+	uint particleCount;
+} push;
+
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+
+// Shared particle buffer
+shared Particle sharedParticles[gl_WorkGroupSize.x];
+
+void main() {
+	if(gl_GlobalInvocationID.x < push.particleCount) {
+		// Load the current particle's info
+		Particle particle = particlesIn[gl_GlobalInvocationID.x];
+		vec2 accel = vec2(0);
+
+		for(uint i = 0; i < push.particleCount; i += gl_WorkGroupSize.x) {
+			// Load the corresponding particle into the shared buffer
+			if(i + gl_LocalInvocationID.x < push.particleCount)
+				sharedParticles[gl_LocalInvocationID.x] = particlesIn[i + gl_LocalInvocationID.x];
+
+			// Wait for all threads to load
+			barrier();
+
+			// Calculate all interactions for the current particle
+			for(uint j = 0; j != gl_WorkGroupSize.z && i + j != push.particleCount; ++j) {
+				// Calculate the distance between the two particles
+				vec2 distVec = sharedParticles[j].pos - particle.pos;
+				float dist = sqrt(dot(distVec, distVec) + push.softeningLenSqr);
+
+				// Apply the formula to get the current acceleration and add it to the particle's total acceleration
+				accel += distVec * sharedParticles[j].mass * push.gravitationalConst / (dist * dist * dist);
+			}
+
+			// Wait for all threads to finish
+			barrier();
+		}
+
+		// Set the new particle's velocity and position
+		vec2 newVel = particle.vel + accel * push.simulationTime;
+		vec2 newPos = particle.pos + (particle.vel + newVel) * 0.5 * push.simulationTime;
+
+		// Update the output particle's info
+		particlesOut[gl_GlobalInvocationID.x].pos = newPos;
+		particlesOut[gl_GlobalInvocationID.x].vel = newVel;
+	} else {
+		// Apply all barriers without running any calculations
+		for(uint i = 0; i < push.particleCount; i += gl_WorkGroupSize.x) {
+			barrier();
+			barrier();
+		}
+	}
+}

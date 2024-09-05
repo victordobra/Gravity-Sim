@@ -45,7 +45,7 @@ namespace gsim {
 		/// @param gravitationalConst The gravitational constant used for the simulation.
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
-		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softenigLen);
+		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softeningLen);
 
 		ParticleSystem& operator=(const ParticleSystem&) = delete;
 		ParticleSystem& operator=(ParticleSystem&&) noexcept = delete;
