@@ -53,9 +53,7 @@ int main(int argc, char** args) {
 			graphicsPipeline->RenderParticles();
 
 			// Store the clock end and calculate the target simulation count
-			clock_t clockEnd = clock();
-			targetSimulationCount = (uint64_t)((float)clock() / CLOCKS_PER_SEC / .001f);
-			clockStart = clockEnd;
+			targetSimulationCount = (uint64_t)((float)(clock() - clockStart) / CLOCKS_PER_SEC / .001f);
 		}
 
 		// Destroy the pipelines
