@@ -44,7 +44,7 @@ void main() {
 			barrier();
 
 			// Calculate all interactions for the current particle
-			for(uint j = 0; j != gl_WorkGroupSize.z && i + j != push.particleCount; ++j) {
+			for(uint j = 0; j != gl_WorkGroupSize.x && i + j != push.particleCount; ++j) {
 				// Calculate the distance between the two particles
 				vec2 distVec = sharedParticles[j].pos - particle.pos;
 				float dist = sqrt(dot(distVec, distVec) + push.softeningLenSqr);
@@ -65,8 +65,13 @@ void main() {
 		particlesOut[gl_GlobalInvocationID.x].pos = newPos;
 		particlesOut[gl_GlobalInvocationID.x].vel = newVel;
 	} else {
-		// Apply all barriers without running any calculations
+		// Only use this thread for loading particles
 		for(uint i = 0; i < push.particleCount; i += gl_WorkGroupSize.x) {
+			// Load the corresponding particle into the shared buffer
+			if(i + gl_LocalInvocationID.x < push.particleCount)
+				sharedParticles[gl_LocalInvocationID.x] = particlesIn[i + gl_LocalInvocationID.x];
+
+			// Wait for all threads to load and finish calculations
 			barrier();
 			barrier();
 		}

@@ -31,7 +31,7 @@ int main(int argc, char** args) {
 		gsim::VulkanSwapChain* swapChain = new gsim::VulkanSwapChain(device, surface);
 
 		// Create the particle system
-		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 12000, gsim::ParticleSystem::GENERATE_TYPE_GALAXY_COLLISION, 200, 10, 100, 500, .5f, .001f, .3f);
+		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 12000, gsim::ParticleSystem::GENERATE_TYPE_GALAXY_COLLISION, 200, 1, 5, 500, 1, .001f, .3f);
 
 		// Create the pipelines
 		gsim::GraphicsPipeline* graphicsPipeline = new gsim::GraphicsPipeline(device, swapChain, particleSystem);
