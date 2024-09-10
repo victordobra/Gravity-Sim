@@ -242,7 +242,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * .05f, thetaCos * r * .05f };
+			particles[i].vel = { -thetaSin * r * .08f, thetaCos * r * .08f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -267,7 +267,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos - galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * .02f + galaxySize * 0.1f, thetaCos * r * .02f };
+			particles[i].vel = { -thetaSin * r * .25f + galaxySize * .1f, thetaCos * r * .25f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -287,7 +287,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos + galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * .02f - galaxySize * 0.1f, thetaCos * r * .02f };
+			particles[i].vel = { -thetaSin * r * .25f - galaxySize * .1f, thetaCos * r * .25f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -312,14 +312,14 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos - galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * .02f + galaxySize * 0.2f, thetaCos * r * .02f };
+			particles[i].vel = { -thetaSin * r * .25f + galaxySize * .1f, thetaCos * r * .25f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
 
 			// Mirror the particle from the first galaxy in the second
 			particles[i + 1].pos = { -particles[i].pos.x, particles[i].pos.y };
-			particles[i + 1].vel = { -particles[i].vel.x, particles[i].vel.y };
+			particles[i + 1].vel = { -thetaSin * r * .25f - galaxySize * .1f, -thetaCos * r * .25f };
 			particles[i + 1].mass = particles[i].mass;
 		}
 	}
