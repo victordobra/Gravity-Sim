@@ -339,6 +339,17 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan compute command pool! Error code: %s", string_VkResult(result));
 	}
 
+	void VulkanDevice::LogDeviceInfo(Logger* logger) {
+		// Log the physical device's name and type
+		logger->LogMessage(Logger::MESSAGE_LEVEL_INFO, "Using Vulkan device: %s, type: %s", properties.deviceName, string_VkPhysicalDeviceType(properties.deviceType));
+
+		// Log the Vulkan version in use
+		logger->LogMessage(Logger::MESSAGE_LEVEL_INFO, "Vulkan version: %u.%u.%u", VK_API_VERSION_MAJOR(properties.apiVersion), VK_API_VERSION_MINOR(properties.apiVersion), VK_API_VERSION_PATCH(properties.apiVersion));
+
+		// Log the queue family indices
+		logger->LogMessage(Logger::MESSAGE_LEVEL_INFO, "Vulkan device queue family indices: graphics - %u, present - %u, transfer - %u, compute - %u (%u unique)", indices.graphicsIndex, indices.presentIndex, indices.transferIndex, indices.computeIndex, (uint32_t)indexArrSize);
+	}
+
 	uint32_t VulkanDevice::GetMemoryTypeIndex(VkMemoryPropertyFlags propertyFlags, uint32_t memoryTypeBits) {
 		// Loop through all supported memory types
 		for(uint32_t i = 0; i != memoryProperties.memoryTypeCount; ++i) {

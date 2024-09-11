@@ -29,6 +29,10 @@ int main(int argc, char** args) {
 		gsim::VulkanSurface* surface = new gsim::VulkanSurface(instance, window);
 		gsim::VulkanDevice* device = new gsim::VulkanDevice(instance, surface);
 		gsim::VulkanSwapChain* swapChain = new gsim::VulkanSwapChain(device, surface);
+	
+		// Log info about the Vulkan objects
+		device->LogDeviceInfo(&logger);
+		swapChain->LogSwapChainInfo(&logger);
 
 		// Create the particle system
 		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 10000, gsim::ParticleSystem::GENERATE_TYPE_GALAXY_COLLISION, 200, 1, 5, 500, 1, .001f, .2f);

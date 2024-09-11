@@ -23,8 +23,7 @@ namespace gsim {
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetPhysicalDevice(), surface->GetSurface(), &formatCount, formats);
 
 		// Find the best possible Vulkan surface format
-		VkFormat format = VK_FORMAT_UNDEFINED;
-		VkColorSpaceKHR colorSpace;
+		format = VK_FORMAT_UNDEFINED;
 		for(uint32_t i = 0; i != formatCount; ++i) {
 			// Skip the current format if it is not viable
 			if(formats[i].format != VK_FORMAT_R8G8B8A8_SRGB && formats[i].format != VK_FORMAT_B8G8R8A8_SRGB)
@@ -240,6 +239,14 @@ namespace gsim {
 			if(result != VK_SUCCESS)
 				GSIM_THROW_EXCEPTION("Failed to create Vulkan framebuffer! Error code: %s", string_VkResult(result));
 		}
+	}
+
+	void VulkanSwapChain::LogSwapChainInfo(Logger* logger) {
+		// Log the swap chain's image count
+		logger->LogMessage(Logger::MESSAGE_LEVEL_INFO, "Using Vulkan swap chain with %u images", imageCount);
+
+		// Log the swap chain's image format and color space
+		logger->LogMessage(Logger::MESSAGE_LEVEL_INFO, "Vulkan swap chain image format: %s (color space: %s)", string_VkFormat(format), string_VkColorSpaceKHR(colorSpace));
 	}
 
 	VulkanSwapChain::~VulkanSwapChain() {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Debug/Logger.hpp"
 #include "VulkanInstance.hpp"
 #include "VulkanSurface.hpp"
 #include <stdint.h>
@@ -123,6 +124,10 @@ namespace gsim {
 		VkCommandPool GetComputeCommandPool() {
 			return computeCommandPool;
 		}
+
+		/// @brief Logs relevant info about the device to the given logger.
+		/// @param logger The logger to log the device's info to.
+		void LogDeviceInfo(Logger* logger);
 
 		/// @brief Finds a memory type with all required properties.
 		/// @param propertyFlags The property flags required for the memory type.

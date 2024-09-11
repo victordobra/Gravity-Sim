@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Debug/Logger.hpp"
 #include "VulkanDevice.hpp"
 #include "VulkanSurface.hpp"
 #include <stdint.h>
@@ -79,6 +80,10 @@ namespace gsim {
 			return framebuffers;
 		}
 
+		/// @brief Logs relevant info about the swap chain to the given logger.
+		/// @param logger The logger to log the swap chain's info to.
+		void LogSwapChainInfo(Logger* logger);
+
 		/// @brief Destroys the Vulkan swap chain.
 		~VulkanSwapChain();
 	private:
@@ -87,6 +92,8 @@ namespace gsim {
 
 		VkSwapchainKHR swapChain;
 		VkExtent2D extent;
+		VkFormat format;
+		VkColorSpaceKHR colorSpace;
 		VkRenderPass renderPass;
 		uint32_t imageCount;
 		VkImage* images;
