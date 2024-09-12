@@ -115,13 +115,9 @@ namespace gsim {
 		}
 		/// @brief Saves the index of the next buffer to use for graphics.
 		void NextGraphicsIndex() {
-			// Arrange the indices to keep the simulations up-to-date and the graphics only one simulation
+			// Arrange the indices to keep the simulations up-to-date and the graphics only one simulation behind
 			size_t aux = graphicsIndex;
-			graphicsIndex = computeInputIndex;
-			computeInputIndex = aux;
-
-			aux = computeInputIndex;
-			computeInputIndex = computeOutputIndex;
+			graphicsIndex = computeOutputIndex;
 			computeOutputIndex = aux;
 		}
 		/// @brief Saves the indices of the next buffers to use for computations.

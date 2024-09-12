@@ -17,8 +17,6 @@ namespace gsim {
 		if(!formats)
 			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan surface format array!");
 		
-		VkPresentModeKHR* presentModes = (VkPresentModeKHR*)(formats + formatCount);
-		
 		// Gets all supported formats
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetPhysicalDevice(), surface->GetSurface(), &formatCount, formats);
 
