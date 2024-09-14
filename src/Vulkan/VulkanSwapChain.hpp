@@ -45,7 +45,7 @@ namespace gsim {
 		}
 
 		/// @brief Gets the implementation's Vulkan swap chain.
-		/// @return A handle to the Vulkan swap chain.
+		/// @return A handle to the Vulkan swap chain, or VK_NULL_HANDLE if the window is minimized.
 		VkSwapchainKHR GetSwapChain() {
 			return swapChain;
 		}
@@ -87,13 +87,20 @@ namespace gsim {
 		/// @brief Destroys the Vulkan swap chain.
 		~VulkanSwapChain();
 	private:
+		static void WindowResizeCallback(void* userData, void* args);
+
+		void FindSwapChainFormat();
+		void CreateRenderPass();
+		void CreateSwapChain(VkSwapchainKHR oldSwapChain);
+		void RecreateSwapChain();
+
 		VulkanDevice* device;
 		VulkanSurface* surface;
 
-		VkSwapchainKHR swapChain;
-		VkExtent2D extent;
 		VkFormat format;
 		VkColorSpaceKHR colorSpace;
+		VkSwapchainKHR swapChain;
+		VkExtent2D extent;
 		VkRenderPass renderPass;
 		uint32_t imageCount;
 		VkImage* images;

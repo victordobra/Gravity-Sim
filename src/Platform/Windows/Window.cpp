@@ -39,6 +39,20 @@ namespace gsim {
 		// Process the message, if the window is known
 		if(window) {
 			switch(msg) {
+			case WM_SIZE:
+				// Set the window's new size
+				window->windowInfo.width = (uint32_t)LOWORD(lParam);
+				window->windowInfo.height = (uint32_t)HIWORD(lParam);
+
+				// Call the window resize event
+				window->resizeEvent.CallEvent(nullptr);
+
+				break;
+			case WM_PAINT:
+				// Call the window draw event
+				window->drawEvent.CallEvent(nullptr);
+
+				return 0;
 			case WM_CLOSE:
 				// Set the window as not running
 				window->windowInfo.running = false;
@@ -82,7 +96,7 @@ namespace gsim {
 		}
 
 		// Create the window
-		platformInfo.hWnd = CreateWindowExA(WS_EX_OVERLAPPEDWINDOW, (LPCSTR)(size_t)platformInfo.winClassID, name, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CW_USEDEFAULT, CW_USEDEFAULT, windowInfo.width, windowInfo.height, nullptr, nullptr, platformInfo.hInstance, nullptr);
+		platformInfo.hWnd = CreateWindowExA(WS_EX_OVERLAPPEDWINDOW, (LPCSTR)(size_t)platformInfo.winClassID, name, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, windowInfo.width, windowInfo.height, nullptr, nullptr, platformInfo.hInstance, nullptr);
 
 		if(!platformInfo.hWnd) {
 			// Format the error message and throw an exception
@@ -102,7 +116,7 @@ namespace gsim {
 	void Window::ParseEvents() {
 		// Handle the window's events
 		MSG msg;
-		while(PeekMessageA(&msg, platformInfo.hWnd, 0, 0, PM_REMOVE)) {
+		while(windowInfo.running && PeekMessageA(&msg, platformInfo.hWnd, 0, 0, PM_REMOVE)) {
 			// Translate and dispatch the message
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);

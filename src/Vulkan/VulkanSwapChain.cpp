@@ -6,8 +6,13 @@
 #include <vulkan/vk_enum_string_helper.h>
 
 namespace gsim {
-	// Public functions
-	VulkanSwapChain::VulkanSwapChain(VulkanDevice* device, VulkanSurface* surface) : device(device), surface(surface) {
+	// Internal helper functions
+	void VulkanSwapChain::WindowResizeCallback(void* userData, void* args) {
+		// Recreate the current swap chain
+		((VulkanSwapChain*)userData)->RecreateSwapChain();
+	}
+
+	void VulkanSwapChain::FindSwapChainFormat() {
 		// Get the number of supported formats
 		uint32_t formatCount;
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device->GetPhysicalDevice(), surface->GetSurface(), &formatCount, nullptr);
@@ -42,6 +47,63 @@ namespace gsim {
 		
 		// Free the format array
 		free(formats);
+	}
+	void VulkanSwapChain::CreateRenderPass() {
+		// Set the attachment description
+		VkAttachmentDescription attachment {
+			.flags = 0,
+			.format = format,
+			.samples = VK_SAMPLE_COUNT_1_BIT,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+			.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		};
+		
+		// Set the attachment reference
+		VkAttachmentReference attachmentRef {
+			.attachment = 0,
+			.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+		};
+
+		// Set the subpass description
+		VkSubpassDescription subpass {
+			.flags = 0,
+			.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+			.inputAttachmentCount = 0,
+			.pInputAttachments = nullptr,
+			.colorAttachmentCount = 1,
+			.pColorAttachments = &attachmentRef,
+			.pResolveAttachments = nullptr,
+			.pDepthStencilAttachment = nullptr,
+			.preserveAttachmentCount = 0,
+			.pPreserveAttachments = nullptr
+		};
+
+		// Set the render pass create info
+		VkRenderPassCreateInfo renderPassInfo {
+			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.attachmentCount = 1,
+			.pAttachments = &attachment,
+			.subpassCount = 1,
+			.pSubpasses = &subpass,
+			.dependencyCount = 0,
+			.pDependencies = nullptr
+		};
+
+		// Create the render pass
+		VkResult result = vkCreateRenderPass(device->GetDevice(), &renderPassInfo, nullptr, &renderPass);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan render pass! Error code: %s", string_VkResult(result));
+	}
+	void VulkanSwapChain::CreateSwapChain(VkSwapchainKHR oldSwapChain) {
+		// Exit the function if the window is minimised
+		if(!surface->GetWindow()->GetWindowInfo().width || !surface->GetWindow()->GetWindowInfo().height)
+			return;
 
 		// Get the surface's capabilities
 		VkSurfaceCapabilitiesKHR capabilities;
@@ -109,7 +171,7 @@ namespace gsim {
 			.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
 			.presentMode = VK_PRESENT_MODE_FIFO_KHR,
 			.clipped = VK_TRUE,
-			.oldSwapchain = VK_NULL_HANDLE
+			.oldSwapchain = oldSwapChain
 		};
 
 		// Create the swap chain
@@ -163,57 +225,6 @@ namespace gsim {
 			if(result != VK_SUCCESS)
 				GSIM_THROW_EXCEPTION("Failed to create Vulkan swap chain image view! Error code: %s", string_VkResult(result));
 		}
-
-		// Set the attachment description
-		VkAttachmentDescription attachment {
-			.flags = 0,
-			.format = format,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-			.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-		};
-		
-		// Set the attachment reference
-		VkAttachmentReference attachmentRef {
-			.attachment = 0,
-			.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-		};
-
-		// Set the subpass description
-		VkSubpassDescription subpass {
-			.flags = 0,
-			.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-			.inputAttachmentCount = 0,
-			.pInputAttachments = nullptr,
-			.colorAttachmentCount = 1,
-			.pColorAttachments = &attachmentRef,
-			.pResolveAttachments = nullptr,
-			.pDepthStencilAttachment = nullptr,
-			.preserveAttachmentCount = 0,
-			.pPreserveAttachments = nullptr
-		};
-
-		// Set the render pass create info
-		VkRenderPassCreateInfo renderPassInfo {
-			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.attachmentCount = 1,
-			.pAttachments = &attachment,
-			.subpassCount = 1,
-			.pSubpasses = &subpass,
-			.dependencyCount = 0,
-			.pDependencies = nullptr
-		};
-
-		// Create the render pass
-		result = vkCreateRenderPass(device->GetDevice(), &renderPassInfo, nullptr, &renderPass);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan render pass! Error code: %s", string_VkResult(result));
 		
 		// Set the framebuffer create info except for its attachment
 		VkFramebufferCreateInfo framebufferInfo {
@@ -238,6 +249,50 @@ namespace gsim {
 				GSIM_THROW_EXCEPTION("Failed to create Vulkan framebuffer! Error code: %s", string_VkResult(result));
 		}
 	}
+	void VulkanSwapChain::RecreateSwapChain() {
+		// Wait for the graphics queue to idle
+		vkQueueWaitIdle(device->GetGraphicsQueue());
+
+		// Save the old swap chain's handle
+		VkSwapchainKHR oldSwapChain = swapChain;
+
+		// Destroy the swap chain's components and reset their handles, if they exist
+		if(oldSwapChain) {
+			// Destroy the framebuffers
+			for(uint32_t i = 0; i != imageCount; ++i)
+				vkDestroyFramebuffer(device->GetDevice(), framebuffers[i], nullptr);
+			
+			// Destroy the image views
+			for(uint32_t i = 0; i != imageCount; ++i)
+				vkDestroyImageView(device->GetDevice(), imageViews[i], nullptr);
+			
+			// Free the image arrays
+			free(images);
+			
+			// Reset all old variables
+			swapChain = VK_NULL_HANDLE;
+			extent = { 0, 0 };
+			imageCount = 0;
+			images = nullptr;
+			imageViews = nullptr;
+			framebuffers = nullptr;
+		}
+
+		// Create the new swap chain and destroy the old one
+		CreateSwapChain(oldSwapChain);
+		vkDestroySwapchainKHR(device->GetDevice(), oldSwapChain, nullptr);
+	}
+
+	// Public functions
+	VulkanSwapChain::VulkanSwapChain(VulkanDevice* device, VulkanSurface* surface) : device(device), surface(surface) {
+		// Add the window resize listener
+		surface->GetWindow()->GetResizeEvent().AddListener({ WindowResizeCallback, this });
+
+		// Create the swap chain's components
+		FindSwapChainFormat();
+		CreateRenderPass();
+		CreateSwapChain(VK_NULL_HANDLE);
+	}
 
 	void VulkanSwapChain::LogSwapChainInfo(Logger* logger) {
 		// Log the swap chain's image count
@@ -248,21 +303,35 @@ namespace gsim {
 	}
 
 	VulkanSwapChain::~VulkanSwapChain() {
-		// Destroy the framebuffers
-		for(uint32_t i = 0; i != imageCount; ++i)
-			vkDestroyFramebuffer(device->GetDevice(), framebuffers[i], nullptr);
-		
+		// Wait for the graphics queue to idle
+		vkQueueWaitIdle(device->GetGraphicsQueue());
+
+		if(swapChain) {
+			// Destroy the framebuffers
+			for(uint32_t i = 0; i != imageCount; ++i)
+				vkDestroyFramebuffer(device->GetDevice(), framebuffers[i], nullptr);
+			
+			// Destroy the image views
+			for(uint32_t i = 0; i != imageCount; ++i)
+				vkDestroyImageView(device->GetDevice(), imageViews[i], nullptr);
+			
+			// Destroy the swap chain
+			vkDestroySwapchainKHR(device->GetDevice(), swapChain, nullptr);
+
+			// Free the image arrays
+			free(images);
+		}
+
 		// Destroy the render pass
 		vkDestroyRenderPass(device->GetDevice(), renderPass, nullptr);
 
-		// Destroy the image views
-		for(uint32_t i = 0; i != imageCount; ++i)
-			vkDestroyImageView(device->GetDevice(), imageViews[i], nullptr);
-		
-		// Destroy the swap chain
-		vkDestroySwapchainKHR(device->GetDevice(), swapChain, nullptr);
-
-		// Free the image arrays
-		free(images);
+		// Find and remove the window resize listener
+		Event& resizeEvent = surface->GetWindow()->GetResizeEvent();
+		for(size_t i = 0; i != resizeEvent.GetListenerCount(); ++i) {
+			if(resizeEvent.GetListeners()[i].userData == this) {
+				resizeEvent.RemoveListener(i);
+				break;
+			}
+		}
 	}
 }

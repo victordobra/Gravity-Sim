@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Event.hpp"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -45,9 +46,6 @@ namespace gsim {
 		Window& operator=(const Window&) = delete;
 		Window& operator=(Window&&) = delete;
 
-		/// @brief Parses all the window's queued events.
-		void ParseEvents();
-
 		/// @brief Gets the window's info.
 		/// @return A struct containing the window's info.
 		const WindowInfo& GetWindowInfo() const {
@@ -59,6 +57,30 @@ namespace gsim {
 			return platformInfo;
 		}
 
+		/// @brief Gets the window's resize event.
+		/// @return A reference to the window's resize event.
+		Event& GetResizeEvent() {
+			return resizeEvent;
+		}
+		/// @brief Gets the window's resize event.
+		/// @return A const reference to the window's resize event.
+		const Event& GetResizeEvent() const {
+			return resizeEvent;
+		}
+		/// @brief Gets the window's draw event.
+		/// @return A reference to the window's draw event.
+		Event& GetDrawEvent() {
+			return drawEvent;
+		}
+		/// @brief Gets the window's draw event.
+		/// @return A const reference to the window's draw event.
+		const Event& GetDrawEvent() const {
+			return drawEvent;
+		}
+
+		/// @brief Parses all the window's queued events.
+		void ParseEvents();
+
 		/// @brief Destroys the window.
 		~Window();
 	private:
@@ -68,5 +90,8 @@ namespace gsim {
 
 		WindowInfo windowInfo;
 		PlatformInfo platformInfo;
+
+		Event resizeEvent;
+		Event drawEvent;
 	};
 }

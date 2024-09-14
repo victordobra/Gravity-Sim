@@ -15,6 +15,30 @@
 #include <time.h>
 #include <exception>
 
+struct WindowDrawData {
+	gsim::GraphicsPipeline* graphicsPipeline;
+	gsim::DirectSimulation* simulation;
+
+	clock_t clockStart;
+	uint64_t simulationCount;
+	uint32_t targetSimulationCount;
+};
+
+static void WindowDrawCallback(void* userData, void* args) {
+	// Get the window draw data
+	WindowDrawData* drawData = (WindowDrawData*)userData;
+
+	// Run the simulations
+	drawData->simulation->RunSimulations(drawData->targetSimulationCount - drawData->simulationCount);
+	drawData->simulationCount = drawData->targetSimulationCount;
+
+	// Render the particles
+	drawData->graphicsPipeline->RenderParticles();
+
+	// Store the clock end and calculate the target simulation count
+	drawData->targetSimulationCount = (uint64_t)((float)(clock() - drawData->clockStart) / CLOCKS_PER_SEC / .001f);
+}
+
 int main(int argc, char** args) {
 	// Create the logger
 	gsim::Logger logger("log.txt", gsim::Logger::MESSAGE_LEVEL_ALL);
@@ -41,23 +65,28 @@ int main(int argc, char** args) {
 		gsim::GraphicsPipeline* graphicsPipeline = new gsim::GraphicsPipeline(device, swapChain, particleSystem);
 		gsim::DirectSimulation* simulation = new gsim::DirectSimulation(device, particleSystem);
 
-		// Run the window's loop
-		uint64_t simulationCount = 0, targetSimulationCount = 0;
-		clock_t clockStart = clock();
+		// Set the window draw data
+		WindowDrawData drawData {
+			.graphicsPipeline = graphicsPipeline,
+			.simulation = simulation,
+			.clockStart = clock(),
+			.simulationCount = 0,
+			.targetSimulationCount = 0
+		};
+
+		// Add the window draw listener
+		window->GetDrawEvent().AddListener({ WindowDrawCallback, &drawData });
 
 		while(window->GetWindowInfo().running) {
 			// Parse the window's events
 			window->ParseEvents();
 
 			// Run the simulations
-			simulation->RunSimulations(targetSimulationCount - simulationCount);
-			simulationCount = targetSimulationCount;
-
-			// Render the particles
-			graphicsPipeline->RenderParticles();
+			simulation->RunSimulations(drawData.targetSimulationCount - drawData.simulationCount);
+			drawData.simulationCount = drawData.targetSimulationCount;
 
 			// Store the clock end and calculate the target simulation count
-			targetSimulationCount = (uint64_t)((float)(clock() - clockStart) / CLOCKS_PER_SEC / .001f);
+			drawData.targetSimulationCount = (uint64_t)((float)(clock() - drawData.clockStart) / CLOCKS_PER_SEC / .001f);
 		}
 
 		// Destroy the pipelines

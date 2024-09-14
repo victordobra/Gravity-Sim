@@ -141,34 +141,15 @@ namespace gsim {
 			.primitiveRestartEnable = VK_FALSE
 		};
 
-		// Set the window's viewport
-		VkViewport viewport {
-			.x = 0.f,
-			.y = 0.f,
-			.width = (float)swapChain->GetSwapChainExtent().width,
-			.height = (float)swapChain->GetSwapChainExtent().height,
-			.minDepth = 0.f,
-			.maxDepth = 1.f
-		};
-
-		// Set the window's scissor
-		VkRect2D scissor {
-			.offset = {
-				.x = 0,
-				.y = 0
-			},
-			.extent = swapChain->GetSwapChainExtent()
-		};
-
 		// Set the viewport state info
 		VkPipelineViewportStateCreateInfo viewportInfo {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
 			.viewportCount = 1,
-			.pViewports = &viewport,
+			.pViewports = nullptr,
 			.scissorCount = 1,
-			.pScissors = &scissor
+			.pScissors = nullptr
 		};
 
 		// Set the rasterization state info
@@ -225,6 +206,18 @@ namespace gsim {
 			.blendConstants = { 0.f, 0.f, 0.f, 0.f }
 		};
 
+		// Set the dynamic states
+		VkDynamicState dynamicStates[] { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+
+		// Set the dynamic state create info
+		VkPipelineDynamicStateCreateInfo dynamicInfo {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.dynamicStateCount = 2,
+			.pDynamicStates = dynamicStates
+		};
+
 		// Set the pipeline create info
 		VkGraphicsPipelineCreateInfo pipelineInfo {
 			.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -240,7 +233,7 @@ namespace gsim {
 			.pMultisampleState = &multisampleInfo,
 			.pDepthStencilState = nullptr,
 			.pColorBlendState = &colorBlendInfo,
-			.pDynamicState = nullptr,
+			.pDynamicState = &dynamicInfo,
 			.layout = pipelineLayout,
 			.renderPass = swapChain->GetRenderPass(),
 			.subpass = 0,
@@ -297,6 +290,10 @@ namespace gsim {
 	}
 
 	void GraphicsPipeline::RenderParticles() {
+		// Exit the function if the window is minimized
+		if(!swapChain->GetSwapChain())
+			return;
+
 		// Wait for the previous rendering operation to finish
 		VkResult result = vkWaitForFences(device->GetDevice(), 1, &renderingFence, VK_TRUE, UINT64_MAX);
 		if(result != VK_SUCCESS)
@@ -353,6 +350,29 @@ namespace gsim {
 
 		// Begin the render pass
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		// Set the viewport
+		VkViewport viewport {
+			.x = 0.f,
+			.y = 0.f,
+			.width = (float)swapChain->GetSwapChainExtent().width,
+			.height = (float)swapChain->GetSwapChainExtent().height,
+			.minDepth = 0.f,
+			.maxDepth = 1.f
+		};
+
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+		// Set the scissor
+		VkRect2D scissor {
+			.offset = {
+				.x = 0,
+				.y = 0
+			},
+			.extent = swapChain->GetSwapChainExtent()
+		};
+
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 		// Bind the graphics pipeline
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
