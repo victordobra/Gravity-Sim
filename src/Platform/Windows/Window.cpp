@@ -39,6 +39,18 @@ namespace gsim {
 		// Process the message, if the window is known
 		if(window) {
 			switch(msg) {
+			case WM_CHAR: {
+				// Set the key event info
+				KeyEventInfo eventInfo {
+					.key = (char)wParam,
+					.repeatCount = (uint32_t)LOWORD(lParam)
+				};
+
+				// Call the key event
+				window->keyEvent.CallEvent(&eventInfo);
+
+				break;
+			}
 			case WM_SIZE:
 				// Set the window's new size
 				window->windowInfo.width = (uint32_t)LOWORD(lParam);
@@ -46,6 +58,16 @@ namespace gsim {
 
 				// Call the window resize event
 				window->resizeEvent.CallEvent(nullptr);
+
+				break;
+			case WM_ENTERSIZEMOVE:
+			 	// Set the resizing variable to true
+				window->windowInfo.resizing = true;
+
+				break;
+			case WM_EXITSIZEMOVE:
+				// Set the resizing variable to false
+				window->windowInfo.resizing = false;
 
 				break;
 			case WM_PAINT:
@@ -111,6 +133,18 @@ namespace gsim {
 
 		// Show the window
 		ShowWindow(platformInfo.hWnd, SW_SHOWNORMAL);
+	}
+
+	bool Window::IsMouseDown() const {
+		return !windowInfo.resizing && (GetActiveWindow() == platformInfo.hWnd) && (GetKeyState(VK_LBUTTON) >> 15) & 1;
+	}
+	Window::MousePos Window::GetMousePos() const {
+		// Get the mouse's position relative to the window
+		POINT point;
+		GetCursorPos(&point);
+		ScreenToClient(platformInfo.hWnd, &point);
+
+		return { (int32_t)point.x, (int32_t)point.y };
 	}
 
 	void Window::ParseEvents() {

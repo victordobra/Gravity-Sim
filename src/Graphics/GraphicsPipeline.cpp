@@ -7,7 +7,8 @@
 namespace gsim {
 	// Structs
 	struct PushConstants {
-		float systemSize;
+		Vec2 cameraPos;
+		Vec2 cameraSize;
 	};
 
 	// Shader sources
@@ -289,7 +290,7 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan rendering command buffer! Error code: %s", string_VkResult(result));
 	}
 
-	void GraphicsPipeline::RenderParticles() {
+	void GraphicsPipeline::RenderParticles(Vec2 cameraPos, Vec2 cameraSize) {
 		// Exit the function if the window is minimized
 		if(!swapChain->GetSwapChain())
 			return;
@@ -384,7 +385,8 @@ namespace gsim {
 
 		// Push the constants to the command buffer
 		PushConstants pushConstants {
-			.systemSize = particleSystem->GetSystemSize()
+			.cameraPos = cameraPos,
+			.cameraSize = cameraSize
 		};
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pushConstants);
 

@@ -82,7 +82,9 @@ namespace gsim {
 		}
 
 		/// @brief Renders the system's particles.
-		void RenderParticles();
+		/// @param cameraPos The camera's position.
+		/// @param cameraSize The camera frustum's size.
+		void RenderParticles(Vec2 cameraPos, Vec2 cameraSize);
 
 		/// @brief Destroys the graphics pipeline.
 		~GraphicsPipeline();

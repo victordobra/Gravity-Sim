@@ -20,6 +20,8 @@ namespace gsim {
 			uint32_t height;
 			/// @brief True if the window is running, otherwise false.
 			bool running;
+			/// @brief true if the window is being resized, otherwise false.
+			bool resizing;
 		};
 
 #if defined(WIN32)
@@ -33,6 +35,20 @@ namespace gsim {
 			HWND hWnd;
 		};
 #endif
+		/// @brief A struct containing the info passed on a key event.
+		struct KeyEventInfo {
+			/// @brief The character represented by the pressed key.
+			char key;
+			/// @brief The repeat count for the key.
+			uint32_t repeatCount;
+		};
+		/// @brief A struct containing the mouse's position.
+		struct MousePos {
+			/// @brief The X coordinate of the mouse's position.
+			int32_t x;
+			/// @brief The X coordinate of the mouse's position.
+			int32_t y;
+		};
 
 		Window() = delete;
 		Window(const Window&) = delete;
@@ -77,6 +93,23 @@ namespace gsim {
 		const Event& GetDrawEvent() const {
 			return drawEvent;
 		}
+		/// @brief Gets the window's key event.
+		/// @return A reference to the window's key event.
+		Event& GetKeyEvent() {
+			return keyEvent;
+		}
+		/// @brief Gets the window's key event.
+		/// @return A const reference to the window's key event.
+		const Event& GetKeyEvent() const {
+			return keyEvent;
+		}
+
+		/// @brief Gets the mouse's position.
+		/// @return The mouse's position.
+		MousePos GetMousePos() const;
+		/// @brief Checks if the mouse is currently pressed.
+		/// @return True if the mouse is currently pressed, otherwise false.
+		bool IsMouseDown() const;
 
 		/// @brief Parses all the window's queued events.
 		void ParseEvents();
@@ -93,5 +126,6 @@ namespace gsim {
 
 		Event resizeEvent;
 		Event drawEvent;
+		Event keyEvent;
 	};
 }

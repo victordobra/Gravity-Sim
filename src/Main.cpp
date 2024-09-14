@@ -19,6 +19,11 @@ struct WindowDrawData {
 	gsim::GraphicsPipeline* graphicsPipeline;
 	gsim::DirectSimulation* simulation;
 
+	gsim::Vec2 cameraPos;
+	float cameraSize;	
+	float cameraZoom;
+	gsim::Window::MousePos mousePos;
+
 	clock_t clockStart;
 	uint64_t simulationCount;
 	uint32_t targetSimulationCount;
@@ -32,11 +37,49 @@ static void WindowDrawCallback(void* userData, void* args) {
 	drawData->simulation->RunSimulations(drawData->targetSimulationCount - drawData->simulationCount);
 	drawData->simulationCount = drawData->targetSimulationCount;
 
+	// Calculate the screen's new position
+	gsim::Window* window = drawData->graphicsPipeline->GetSwapChain()->GetSurface()->GetWindow();
+	float aspectRatio = (float)window->GetWindowInfo().width / window->GetWindowInfo().height;
+	gsim::Window::MousePos newMousePos = window->GetMousePos();
+
+	if(window->IsMouseDown()) {
+		// Calculate the mouse's relative pos
+		gsim::Window::MousePos relativePos { newMousePos.x - drawData->mousePos.x, newMousePos.y - drawData->mousePos.y };
+
+		// Calculate the relative world pos
+		gsim::Vec2 relativeWorldPos { (float)relativePos.x / window->GetWindowInfo().width * 2, -((float)relativePos.y / window->GetWindowInfo().height * 2) };
+		relativeWorldPos.x *= drawData->cameraSize * aspectRatio / drawData->cameraZoom;
+		relativeWorldPos.y *= drawData->cameraSize / drawData->cameraZoom;
+
+		// Set the new camera pos
+		drawData->cameraPos.x -= relativeWorldPos.x;
+		drawData->cameraPos.y -= relativeWorldPos.y;
+	}
+
+	// Set the new mouse pos
+	drawData->mousePos = newMousePos;
+
 	// Render the particles
-	drawData->graphicsPipeline->RenderParticles();
+	drawData->graphicsPipeline->RenderParticles(drawData->cameraPos, { drawData->cameraSize * aspectRatio / drawData->cameraZoom, drawData->cameraSize / drawData->cameraZoom });
 
 	// Store the clock end and calculate the target simulation count
 	drawData->targetSimulationCount = (uint64_t)((float)(clock() - drawData->clockStart) / CLOCKS_PER_SEC / .001f);
+}
+static void WindowKeyCallback(void* userData, void* args) {
+	// Get the event's info
+	gsim::Window::KeyEventInfo eventInfo = *(gsim::Window::KeyEventInfo*)args;
+
+	// Get the window draw data
+	WindowDrawData* drawData = (WindowDrawData*)userData;
+
+	// Check if the camera will be zoomed in or out
+	if(eventInfo.key == '+') {
+		drawData->cameraZoom += .1f * eventInfo.repeatCount;
+	} else if(eventInfo.key = '-') {
+		drawData->cameraZoom -= .1f * eventInfo.repeatCount;
+		if(drawData->cameraZoom < .5f)
+			drawData->cameraZoom = .5f;
+	}
 }
 
 int main(int argc, char** args) {
@@ -59,7 +102,7 @@ int main(int argc, char** args) {
 		swapChain->LogSwapChainInfo(&logger);
 
 		// Create the particle system
-		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 10000, gsim::ParticleSystem::GENERATE_TYPE_GALAXY_COLLISION, 200, 1, 5, 500, 1, .001f, .2f);
+		gsim::ParticleSystem* particleSystem = new gsim::ParticleSystem(device, 10000, gsim::ParticleSystem::GENERATE_TYPE_GALAXY_COLLISION, 200, 1, 5, 1000, 1, .001f, .2f);
 
 		// Create the pipelines
 		gsim::GraphicsPipeline* graphicsPipeline = new gsim::GraphicsPipeline(device, swapChain, particleSystem);
@@ -69,13 +112,18 @@ int main(int argc, char** args) {
 		WindowDrawData drawData {
 			.graphicsPipeline = graphicsPipeline,
 			.simulation = simulation,
+			.cameraPos = { 0, 0 },
+			.cameraSize = 1000,
+			.cameraZoom = 1,
+			.mousePos = { 0, 0 },
 			.clockStart = clock(),
 			.simulationCount = 0,
 			.targetSimulationCount = 0
 		};
 
-		// Add the window draw listener
+		// Add the event listeners
 		window->GetDrawEvent().AddListener({ WindowDrawCallback, &drawData });
+		window->GetKeyEvent().AddListener({ WindowKeyCallback, &drawData });
 
 		while(window->GetWindowInfo().running) {
 			// Parse the window's events
