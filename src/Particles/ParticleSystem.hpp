@@ -19,7 +19,9 @@ namespace gsim {
 			/// @brief Simulates the collision of two sipral galaxies, each spanning a third of the generation confines.
 			GENERATE_TYPE_GALAXY_COLLISION,
 			/// @brief Simulates the collision of two symmetrical spiral galaxies, each spanning a third of the generation confines.
-			GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION
+			GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION,
+			/// @brief The number of possible particle system generation variants.
+			GENERATE_TYPE_COUNT
 		};
 
 		ParticleSystem() = delete;
@@ -33,7 +35,7 @@ namespace gsim {
 		/// @param gravitationalConst The gravitational constant used for the simulation.
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
-		ParticleSystem(VulkanDevice* device, const char* filePath, float systemSize, float gravitationalConst, float simulationTime, float softenigLen);
+		ParticleSystem(VulkanDevice* device, const char* filePath, float systemSize, float gravitationalConst, float simulationTime, float softeningLen);
 		/// @brief Generates a particle system based on the given parameters.
 		/// @param device The Vulkan device to use for Vulkan-specific components.
 		/// @param particleCount The number of particles in the system.

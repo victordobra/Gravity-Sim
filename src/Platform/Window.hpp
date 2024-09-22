@@ -20,7 +20,7 @@ namespace gsim {
 			uint32_t height;
 			/// @brief True if the window is running, otherwise false.
 			bool running;
-			/// @brief true if the window is being resized, otherwise false.
+			/// @brief True if the window is being resized, otherwise false.
 			bool resizing;
 		};
 
@@ -29,6 +29,8 @@ namespace gsim {
 		struct PlatformInfo {
 			/// @brief The handle to the Windows instance.
 			HINSTANCE hInstance;
+			/// @brief The handle to the brush used for the window's background.
+			HBRUSH bgBrush;
 			/// @brief The window's class ID.
 			ATOM winClassID;
 			/// @brief The handle to the window.
@@ -113,6 +115,8 @@ namespace gsim {
 
 		/// @brief Parses all the window's queued events.
 		void ParseEvents();
+		/// @brief Closes the window.
+		void CloseWindow();
 
 		/// @brief Destroys the window.
 		~Window();

@@ -194,7 +194,7 @@ namespace gsim {
 		
 		// Create the debug messenger, if requested
 		if(validationEnabled) {
-			auto pfnCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+			PFN_vkCreateDebugUtilsMessengerEXT pfnCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 			result = pfnCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
 			if(result != VK_SUCCESS)
 				GSIM_THROW_EXCEPTION("Failed to create Vulkan debug utils messenger! Error code: %s", string_VkResult(result));
@@ -211,7 +211,7 @@ namespace gsim {
     VulkanInstance::~VulkanInstance() {
 		// Destroy the debug messenger, if it exists
 		if(debugMessenger) {
-			auto pfnDestroyDebugUrilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+			PFN_vkDestroyDebugUtilsMessengerEXT pfnDestroyDebugUrilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 			pfnDestroyDebugUrilsMessengerEXT(instance, debugMessenger, nullptr);
 		}
 		

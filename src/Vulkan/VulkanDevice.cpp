@@ -34,30 +34,32 @@ namespace gsim {
 		// Find the best graphics and present queue family index, if required
 		VulkanDevice::QueueFamilyIndices indices;
 
-		for(uint32_t i = 0; i != familyCount; ++i) {
-			// Check if the current queue supports graphics
-			bool graphicsSupport = families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT;
+		if(surface) {
+			for(uint32_t i = 0; i != familyCount; ++i) {
+				// Check if the current queue supports graphics
+				bool graphicsSupport = families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT;
 
-			// Check if the current queue supports presenting
-			VkBool32 presentSupport;
-			vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface->GetSurface(), &presentSupport);
+				// Check if the current queue supports presenting
+				VkBool32 presentSupport;
+				vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface->GetSurface(), &presentSupport);
 #if defined(WIN32)
-			presentSupport = presentSupport && vkGetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice, i);
+				presentSupport = presentSupport && vkGetPhysicalDeviceWin32PresentationSupportKHR(physicalDevice, i);
 #endif
 
-			// Exit the loop if both graphics and presenting are supported, as this is the best possible scenario
-			if(graphicsSupport && presentSupport && families[i].queueCount != 1) {
-				indices.graphicsIndex = i;
-				indices.presentIndex = i;
-				break;
-			}
+				// Exit the loop if both graphics and presenting are supported, as this is the best possible scenario
+				if(graphicsSupport && presentSupport && families[i].queueCount != 1) {
+					indices.graphicsIndex = i;
+					indices.presentIndex = i;
+					break;
+				}
 
-			// Set the individual queue family indices
-			if(graphicsSupport && indices.graphicsIndex == UINT32_MAX) {
-				indices.graphicsIndex = i;
-			}
-			if(presentSupport && indices.presentIndex == UINT32_MAX) {
-				indices.presentIndex = i;
+				// Set the individual queue family indices
+				if(graphicsSupport && indices.graphicsIndex == UINT32_MAX) {
+					indices.graphicsIndex = i;
+				}
+				if(presentSupport && indices.presentIndex == UINT32_MAX) {
+					indices.presentIndex = i;
+				}
 			}
 		}
 
@@ -209,7 +211,7 @@ namespace gsim {
 		// Set all queue family create infos
 		uint32_t queueInfoCount = 0;
 		VkDeviceQueueCreateInfo queueInfos[4];
-		float queuePriorities[4]{ 1.f, 1.f, 1.f, 1.f };
+		float queuePriorities[4]{ 1.0f, 1.0f, 1.0f, 1.0f };
 
 		uint32_t familyIndexArr[4]{ indices.graphicsIndex, indices.presentIndex, indices.transferIndex, indices.computeIndex };
 		uint32_t infoIndices[4];
@@ -347,7 +349,11 @@ namespace gsim {
 		logger->LogMessage(Logger::MESSAGE_LEVEL_INFO, "Vulkan version: %u.%u.%u", VK_API_VERSION_MAJOR(properties.apiVersion), VK_API_VERSION_MINOR(properties.apiVersion), VK_API_VERSION_PATCH(properties.apiVersion));
 
 		// Log the queue family indices
-		logger->LogMessage(Logger::MESSAGE_LEVEL_INFO, "Vulkan device queue family indices: graphics - %u, present - %u, transfer - %u, compute - %u (%u unique)", indices.graphicsIndex, indices.presentIndex, indices.transferIndex, indices.computeIndex, (uint32_t)indexArrSize);
+		if(indices.graphicsIndex != UINT32_MAX) {
+			logger->LogMessage(Logger::MESSAGE_LEVEL_INFO, "Vulkan device queue family indices: graphics - %u, present - %u, transfer - %u, compute - %u (%u unique)", indices.graphicsIndex, indices.presentIndex, indices.transferIndex, indices.computeIndex, (uint32_t)indexArrSize);
+		} else {
+			logger->LogMessage(Logger::MESSAGE_LEVEL_INFO, "Vulkan device queue family indices: transfer - %u, compute - %u (%u unique)", indices.transferIndex, indices.computeIndex, (uint32_t)indexArrSize);
+		}
 	}
 
 	uint32_t VulkanDevice::GetMemoryTypeIndex(VkMemoryPropertyFlags propertyFlags, uint32_t memoryTypeBits) {

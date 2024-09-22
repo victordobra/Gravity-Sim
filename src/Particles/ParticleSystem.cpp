@@ -242,7 +242,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * .08f, thetaCos * r * .08f };
+			particles[i].vel = { -thetaSin * r * 0.08f, thetaCos * r * 0.08f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -267,7 +267,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos - galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * .25f + galaxySize * .1f, thetaCos * r * .25f };
+			particles[i].vel = { -thetaSin * r * 0.25f + galaxySize * 0.1f, thetaCos * r * 0.25f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -287,7 +287,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos + galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * .25f - galaxySize * .1f, thetaCos * r * .25f };
+			particles[i].vel = { -thetaSin * r * 0.25f - galaxySize * 0.1f, thetaCos * r * 0.25f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -312,20 +312,20 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos - galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * .25f + galaxySize * .1f, thetaCos * r * .25f };
+			particles[i].vel = { -thetaSin * r * 0.25f + galaxySize * 0.1f, thetaCos * r * 0.25f };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
 
 			// Mirror the particle from the first galaxy in the second
 			particles[i + 1].pos = { -particles[i].pos.x, particles[i].pos.y };
-			particles[i + 1].vel = { -thetaSin * r * .25f - galaxySize * .1f, -thetaCos * r * .25f };
+			particles[i + 1].vel = { -thetaSin * r * 0.25f - galaxySize * 0.1f, -thetaCos * r * 0.25f };
 			particles[i + 1].mass = particles[i].mass;
 		}
 	}
 
 	// Public functions
-	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float systemSize, float gravitationalConst, float simulationTime, float softenigLen) : device(device), systemSize(systemSize), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
+	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float systemSize, float gravitationalConst, float simulationTime, float softeningLen) : device(device), systemSize(systemSize), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
 		// Open the given file
 		FILE* fileInput = fopen(filePath, "r");
 		if(!fileInput)
@@ -417,7 +417,7 @@ namespace gsim {
 			.pNext = nullptr,
 			.flags = 0,
 			.size = (VkDeviceSize)(particleCount * sizeof(Particle)),
-			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 1,
 			.pQueueFamilyIndices = &transferIndex
@@ -492,7 +492,7 @@ namespace gsim {
 			.size = particleCount * sizeof(Particle)
 		};
 
-		vkCmdCopyBuffer(commandBuffer, buffers[computeOutputIndex], stagingBuffer, 1, &copyRegion);
+		vkCmdCopyBuffer(commandBuffer, buffers[computeInputIndex], stagingBuffer, 1, &copyRegion);
 		
 		// End recording the command buffer
 		vkEndCommandBuffer(commandBuffer);

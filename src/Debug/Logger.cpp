@@ -6,7 +6,7 @@ namespace gsim {
 	// Constants
 	static const size_t MAX_MESSAGE_LEN = 2048;
 
-	// Internal functions
+	// Internal helper functions
 	static const char* MessageLevelToString(Logger::MessageLevel messageLevel) {
 		switch(messageLevel) {
 		case Logger::MESSAGE_LEVEL_DEBUG:
@@ -22,6 +22,29 @@ namespace gsim {
 		default:
 			return "[LOG]         ";
 		}
+	}
+
+	void Logger::LogMessageInternal(MessageLevel level, const char* message) {
+		// Get the message level's string
+		const char* levelString = MessageLevelToString(level);
+
+		// Output the message to the log file, if it exists
+		if(logFile) {
+			fputs(levelString, logFile);
+			fputs(message, logFile);
+			fputc('\n', logFile);
+			fflush(logFile);
+		}
+
+		// Output the message to the console
+		fputs(levelString, stdout);
+		fputs(message, stdout);
+		fputc('\n', stdout);
+		fflush(stdout);
+
+		// Close the program if the messsage is a fatal error
+		if(level == MESSAGE_LEVEL_FATAL_ERROR)
+			abort();
 	}
 
 	// Public functions
@@ -53,26 +76,23 @@ namespace gsim {
 		// End the va list
 		va_end(args);
 
-		// Get the message level's string
-		const char* levelString = MessageLevelToString(level);
+		// Log the formatted message
+		LogMessageInternal(level, message);
+	}
+	void Logger::LogMessageForced(MessageLevel level, const char* format, ...) {
+		// Get the va list
+		va_list args;
+		va_start(args, format);
 
-		// Output the message to the log file, if it exists
-		if(logFile) {
-			fputs(levelString, logFile);
-			fputs(message, logFile);
-			fputc('\n', logFile);
-			fflush(logFile);
-		}
+		// Format the message
+		char message[MAX_MESSAGE_LEN];
+		vsnprintf(message, MAX_MESSAGE_LEN, format, args);
 
-		// Output the message to the console
-		fputs(levelString, stdout);
-		fputs(message, stdout);
-		fputc('\n', stdout);
-		fflush(stdout);
+		// End the va list
+		va_end(args);
 
-		// Close the program if the messsage is a fatal error
-		if(level == MESSAGE_LEVEL_FATAL_ERROR)
-			abort();
+		// Log the formatted message
+		LogMessageInternal(level, message);
 	}
 	void Logger::LogException(const Exception& exception) {
 		// Log a message containing the exception's info

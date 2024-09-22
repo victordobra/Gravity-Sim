@@ -164,10 +164,10 @@ namespace gsim {
 			.cullMode = VK_CULL_MODE_NONE,
 			.frontFace = VK_FRONT_FACE_CLOCKWISE,
 			.depthBiasEnable = VK_FALSE,
-			.depthBiasConstantFactor = 0.f,
-			.depthBiasClamp = 0.f,
-			.depthBiasSlopeFactor = 0.f,
-			.lineWidth = 1.f
+			.depthBiasConstantFactor = 0.0f,
+			.depthBiasClamp = 0.0f,
+			.depthBiasSlopeFactor = 0.0f,
+			.lineWidth = 1.0f
 		};
 
 		// Set the multisample state info
@@ -177,7 +177,7 @@ namespace gsim {
 			.flags = 0,
 			.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
 			.sampleShadingEnable = VK_FALSE,
-			.minSampleShading = 0.f,
+			.minSampleShading = 0.0f,
 			.pSampleMask = nullptr,
 			.alphaToCoverageEnable = VK_FALSE,
 			.alphaToOneEnable = VK_FALSE
@@ -204,7 +204,7 @@ namespace gsim {
 			.logicOp = VK_LOGIC_OP_COPY,
 			.attachmentCount = 1,
 			.pAttachments = &colorBlendAttachment,
-			.blendConstants = { 0.f, 0.f, 0.f, 0.f }
+			.blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f }
 		};
 
 		// Set the dynamic states
@@ -330,7 +330,7 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to begin recording Vulkan rendering command buffer! Error code: %s", string_VkResult(result));
 		
 		// Set the background clear value
-		VkClearValue clearValue { 0.f, 0.f, 0.f, 1.f };
+		VkClearValue clearValue { 0.0f, 0.0f, 0.0f, 1.0f };
 
 		// Set the render pass begin info
 		VkRenderPassBeginInfo renderPassInfo {
@@ -354,12 +354,12 @@ namespace gsim {
 
 		// Set the viewport
 		VkViewport viewport {
-			.x = 0.f,
-			.y = 0.f,
+			.x = 0.0f,
+			.y = 0.0f,
 			.width = (float)swapChain->GetSwapChainExtent().width,
 			.height = (float)swapChain->GetSwapChainExtent().height,
-			.minDepth = 0.f,
-			.maxDepth = 1.f
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
 		};
 
 		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);

@@ -29,7 +29,7 @@ namespace gsim {
 		// Get the window pointer from the HWND
 		Window* window;
 
-		auto windowIter = windowMap.find(hWnd);
+		std::unordered_map<HWND, Window*>::iterator windowIter = windowMap.find(hWnd);
 		if(windowIter != windowMap.end()) {
 			window = windowIter->second;
 		} else {
@@ -90,6 +90,9 @@ namespace gsim {
 		// Get the program's HINSTANCE
 		platformInfo.hInstance = GetModuleHandleA(nullptr);
 
+		// CCreate the background brush
+		platformInfo.bgBrush = CreateSolidBrush(RGB(0, 0, 0));
+
 		// Set the window's class info
 		WNDCLASSEXA winClassInfo;
 
@@ -101,7 +104,7 @@ namespace gsim {
 		winClassInfo.hInstance = platformInfo.hInstance;
 		winClassInfo.hIcon = LoadIconA(nullptr, IDI_APPLICATION);
 		winClassInfo.hCursor = LoadCursorA(nullptr, IDC_ARROW);
-		winClassInfo.hbrBackground = nullptr;
+		winClassInfo.hbrBackground = platformInfo.bgBrush;
 		winClassInfo.lpszMenuName = nullptr;
 		winClassInfo.lpszClassName = name;
 		winClassInfo.hIconSm = LoadIconA(nullptr, IDI_APPLICATION);
@@ -156,14 +159,19 @@ namespace gsim {
 			DispatchMessageA(&msg);
 		}
 	}
+	void Window::CloseWindow() {
+		// Post a close message
+		PostMessageA(platformInfo.hWnd, WM_CLOSE, 0, 0);
+	}
 
 	Window::~Window() {
 		// Remove the window from the map
 		windowMap.erase(platformInfo.hWnd);
 
-		// Destroy the window and unregister the window's class
+		// Destroy the all of the window's components
 		DestroyWindow(platformInfo.hWnd);
 		UnregisterClassA((LPCSTR)(size_t)platformInfo.winClassID, platformInfo.hInstance);
+		DeleteObject(platformInfo.bgBrush);
 	}
 }
 

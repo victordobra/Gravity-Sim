@@ -19,6 +19,8 @@ namespace gsim {
 			MESSAGE_LEVEL_ERROR = 0x08,
 			/// @brief The level of a faltal error message that instantly closes the program.
 			MESSAGE_LEVEL_FATAL_ERROR = 0x10,
+			/// @brief A bitmask containing the flags of essential message levels.
+			MESSAGE_LEVEL_ESSENTIAL = MESSAGE_LEVEL_WARNING | MESSAGE_LEVEL_ERROR | MESSAGE_LEVEL_FATAL_ERROR,
 			/// @brief A bitmask containing the flags of all message levels.
 			MESSAGE_LEVEL_ALL = MESSAGE_LEVEL_DEBUG | MESSAGE_LEVEL_INFO | MESSAGE_LEVEL_WARNING | MESSAGE_LEVEL_ERROR | MESSAGE_LEVEL_FATAL_ERROR
 		};
@@ -40,6 +42,10 @@ namespace gsim {
 		/// @param level The message's level.
 		/// @param format The format to use for the message.
 		void LogMessage(MessageLevel level, const char* format, ...);
+		/// @brief Logs a message, without comparing its level with the logger's flags.
+		/// @param level The message's level.
+		/// @param format The format to use for the message.
+		void LogMessageForced(MessageLevel level, const char* format, ...);
 		/// @brief Logs an exception.
 		/// @param exception The exception to log.
 		void LogException(const Exception& exception);
@@ -50,6 +56,8 @@ namespace gsim {
 		/// @brief Destroys the debug logger.
 		~Logger();
 	private:
+		void LogMessageInternal(MessageLevel level, const char* message);
+
 		FILE* logFile;
 		MessageLevelFlags levelFlags;
 	};
