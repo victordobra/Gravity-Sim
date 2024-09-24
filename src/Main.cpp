@@ -224,9 +224,9 @@ int main(int argc, char** args) {
 
 			// Create the particle system
 			if(programInfo.particlesInFile) {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.systemSize, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen);
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.systemSize, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
 			} else {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.systemSize, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen);
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.systemSize, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
 			}
 
 			// Create the simulation
