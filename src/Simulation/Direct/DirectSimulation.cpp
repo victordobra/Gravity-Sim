@@ -23,6 +23,10 @@ namespace gsim {
 	};
 
 	// Public functions
+	size_t DirectSimulation::GetRequiredParticleAlignment() {
+		return WORKGROUP_SIZE;
+	}
+
 	DirectSimulation::DirectSimulation(VulkanDevice* device, ParticleSystem* particleSystem) : device(device), particleSystem(particleSystem) {
 		// Set the descriptor set layout binding
 		VkDescriptorSetLayoutBinding setLayoutBinding {
@@ -255,7 +259,7 @@ namespace gsim {
 			.simulationTime = particleSystem->GetSimulationTime(),
 			.gravitationalConst = particleSystem->GetGravitationalConst(),
 			.softeningLenSqr = particleSystem->GetSofteningLen() * particleSystem->GetSofteningLen(),
-			.particleCount = (uint32_t)particleSystem->GetParticleCount()
+			.particleCount = (uint32_t)particleSystem->GetAlignedParticleCount()
 		};
 
 		// Set the memory barrier info

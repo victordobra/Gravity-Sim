@@ -35,7 +35,8 @@ namespace gsim {
 		/// @param gravitationalConst The gravitational constant used for the simulation.
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
-		ParticleSystem(VulkanDevice* device, const char* filePath, float systemSize, float gravitationalConst, float simulationTime, float softeningLen);
+		/// @param particleCountAlignment The alignment to use for the particle count when creating the buffer. All extra particles are given a null mass, therefore they will not interfere with the simulation. Defaulted to 1.
+		ParticleSystem(VulkanDevice* device, const char* filePath, float systemSize, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment = 1);
 		/// @brief Generates a particle system based on the given parameters.
 		/// @param device The Vulkan device to use for Vulkan-specific components.
 		/// @param particleCount The number of particles in the system.
@@ -47,7 +48,8 @@ namespace gsim {
 		/// @param gravitationalConst The gravitational constant used for the simulation.
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
-		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softeningLen);
+		/// @param particleCountAlignment The alignment to use for the particle count when creating the buffer. All extra particles are given a null mass, therefore they will not interfere with the simulation. Defaulted to 1.
+		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment = 1);
 
 		ParticleSystem& operator=(const ParticleSystem&) = delete;
 		ParticleSystem& operator=(ParticleSystem&&) noexcept = delete;
@@ -67,6 +69,11 @@ namespace gsim {
 		/// @return The number of particles in the system.
 		size_t GetParticleCount() const {
 			return particleCount;
+		}
+		/// @brief Gets the number of particles in the system, aligned for easy usage by the simulation.
+		/// @return The number of particles in the system, aligned for easy usage by the simulation.
+		size_t GetAlignedParticleCount() const {
+			return alignedParticleCount;
 		}
 		/// @brief Gets the side length of the system's bounding box.
 		/// @return The side length of the system's bounding box.
@@ -140,15 +147,16 @@ namespace gsim {
 		/// @brief Destroys the particle system.
 		~ParticleSystem();
 	private:
-		void CreateVulkanObjects(const Particle* particles);
 		void GenerateParticlesRandom(Particle* particles, float generateSize, float minMass, float maxMass);
 		void GenerateParticlesGalaxy(Particle* particles, float generateSize, float minMass, float maxMass);
 		void GenerateParticlesGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass);
 		void GenerateParticlesSymmetricalGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass);
+		void CreateVulkanObjects(const Particle* particles);
 
 		VulkanDevice* device;
 
 		size_t particleCount;
+		size_t alignedParticleCount;
 		float systemSize;
 		float gravitationalConst;
 		float simulationTime;

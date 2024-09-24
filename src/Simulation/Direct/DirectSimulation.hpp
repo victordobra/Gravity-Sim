@@ -10,6 +10,10 @@ namespace gsim {
 	/// @brief A particle simulation which uses the direct sum method.
 	class DirectSimulation {
 	public:
+		/// @brief Gets the particle alignment required for the simulation to run.
+		/// @return The particle alignment required for the simulation to run.
+		static size_t GetRequiredParticleAlignment();
+
 		DirectSimulation() = delete;
 		DirectSimulation(const DirectSimulation&) = delete;
 		DirectSimulation(DirectSimulation&&) noexcept = delete;
