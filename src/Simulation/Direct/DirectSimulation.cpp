@@ -7,6 +7,7 @@
 namespace gsim {
 	// Constants
 	const uint32_t WORKGROUP_SIZE = 64;
+	const uint32_t WORKGROUP_LOAD_COUNT = 2;
 
 	// Structs
 	struct PushConstants {
@@ -24,7 +25,7 @@ namespace gsim {
 
 	// Public functions
 	size_t DirectSimulation::GetRequiredParticleAlignment() {
-		return WORKGROUP_SIZE;
+		return WORKGROUP_SIZE * WORKGROUP_LOAD_COUNT;
 	}
 
 	DirectSimulation::DirectSimulation(VulkanDevice* device, ParticleSystem* particleSystem) : device(device), particleSystem(particleSystem) {
@@ -151,19 +152,28 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan compute pipeline layout! Error code: %s", string_VkResult(result));
 		
-		// Set the specialization map entry
-		VkSpecializationMapEntry specializationEntry {
-			.constantID = 0,
-			.offset = 0,
-			.size = sizeof(uint32_t)
+		// Set the specialization map entries
+		VkSpecializationMapEntry specializationEntries[] {
+			{
+				.constantID = 0,
+				.offset = 0,
+				.size = sizeof(uint32_t)
+			},
+			{
+				.constantID = 1,
+				.offset = sizeof(uint32_t),
+				.size = sizeof(uint32_t)
+			}
 		};
 
 		// Set the specialization info
+		uint32_t specializationData[] { WORKGROUP_SIZE, WORKGROUP_LOAD_COUNT };
+
 		VkSpecializationInfo specializationInfo {
-			.mapEntryCount = 1,
-			.pMapEntries = &specializationEntry,
-			.dataSize = sizeof(uint32_t),
-			.pData = &WORKGROUP_SIZE
+			.mapEntryCount = 2,
+			.pMapEntries = specializationEntries,
+			.dataSize = sizeof(uint32_t) << 1,
+			.pData = specializationData
 		};
 		
 		// Set the pipeline create info
@@ -280,7 +290,7 @@ namespace gsim {
 			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &pushConstants);
 
 			// Run the shader
-			vkCmdDispatch(commandBuffer, (pushConstants.particleCount + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE, 1, 1);
+			vkCmdDispatch(commandBuffer, pushConstants.particleCount / WORKGROUP_SIZE / WORKGROUP_LOAD_COUNT, 1, 1);
 
 			// Add the pipeline barrier
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);

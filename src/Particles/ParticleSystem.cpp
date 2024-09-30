@@ -364,7 +364,8 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("The particle input file must contain at least one valid particle!");
 		
 		// Set the aligned particle count
-		alignedParticleCount = (particleCount + particleCountAlignment - 1) & ~(particleCountAlignment - 1);
+		alignedParticleCount = particleCount + particleCountAlignment - 1;
+		alignedParticleCount -= alignedParticleCount % particleCountAlignment;
 
 		// Create the Vulkan objects
 		CreateVulkanObjects(particles);
@@ -372,7 +373,7 @@ namespace gsim {
 		// Free the particles array
 		free(particles);
 	}
-	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment) : device(device), particleCount(particleCount), alignedParticleCount((particleCount + particleCountAlignment - 1) & ~(particleCountAlignment - 1)), systemSize(systemSize), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
+	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment) : device(device), particleCount(particleCount), systemSize(systemSize), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
 		// Round the particle count down to the nearest even integer if the generate type is set to GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION
 		if(generateType == GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION) {
 			particleCount &= ~1;
@@ -382,6 +383,10 @@ namespace gsim {
 		// Throw an exception if there are no particles in the system
 		if(!particleCount)
 			GSIM_THROW_EXCEPTION("The simulation must contain at least one particle!");
+
+		// Set the aligned particle count
+		alignedParticleCount = particleCount + particleCountAlignment - 1;
+		alignedParticleCount -= alignedParticleCount % particleCountAlignment;
 		
 		// Allocate the particle array
 		Particle* particles = (Particle*)malloc(alignedParticleCount * sizeof(Particle));

@@ -265,7 +265,7 @@ int main(int argc, char** args) {
 				if(runtimeAvgMs >= 5000) {
 					programInfo.logger->LogMessageForced(gsim::Logger::MESSAGE_LEVEL_INFO, "Average runtime/simulation: %.3fs", (runtimeAvgMs * 0.001f));
 				} else if(runtimeAvgMs >= 1) {
-					programInfo.logger->LogMessageForced(gsim::Logger::MESSAGE_LEVEL_INFO, "Average runtime/simulation: %.1fms", runtimeAvgMs);
+					programInfo.logger->LogMessageForced(gsim::Logger::MESSAGE_LEVEL_INFO, "Average runtime/simulation: %.3fms", runtimeAvgMs);
 				} else {
 					programInfo.logger->LogMessageForced(gsim::Logger::MESSAGE_LEVEL_INFO, "Average runtime/simulation: %.1fus", (runtimeAvgMs * 1000));
 				}
