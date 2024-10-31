@@ -1,22 +1,27 @@
 #version 430
 
 // Constants
-layout(constant_id = 0) const uint WORKGROUP_SIZE = 64;
-layout(constant_id = 1) const uint WORKGROUP_LOAD_COUNT = 2;
-
-// Particle struct
-struct Particle {
-	vec2 pos;
-	vec2 vel;
-	float mass;
-};
+layout(constant_id = 0) const uint WORKGROUP_SIZE = 128;
 
 // Particle buffers
-layout(set = 0, binding = 0) buffer ParticleInBuffer {
-	Particle particlesIn[];
+layout(set = 0, binding = 0) buffer ParticlesPosInBuffer {
+	vec2 particlesPosIn[];
 };
-layout(set = 1, binding = 0) buffer ParticleOutBuffer {
-	Particle particlesOut[];
+layout(set = 0, binding = 1) buffer ParticlesVelInBuffer {
+	vec2 particlesVelIn[];
+};
+layout(set = 0, binding = 2) buffer ParticlesMassInBuffer {
+	float particlesMassIn[];
+};
+
+layout(set = 1, binding = 0) buffer ParticlesPosOutBuffer {
+	vec2 particlesPosOut[];
+};
+layout(set = 1, binding = 1) buffer ParticlesVelOutBuffer {
+	vec2 particlesVelOut[];
+};
+layout(set = 1, binding = 2) buffer ParticlesMassOutBuffer {
+	float particlesMassOut[];
 };
 
 // Push constants
@@ -31,54 +36,42 @@ layout(push_constant) uniform PushConstants {
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 // Shared particle buffer
-shared vec3 sharedParticles[WORKGROUP_SIZE];
+shared vec2 sharedParticlesPos[WORKGROUP_SIZE];
+shared float sharedParticlesMass[WORKGROUP_SIZE];
 
 void main() {
-	// Get the local and global particle indices
-	uint localInd = gl_LocalInvocationID.x;
-	uint globalInd = gl_WorkGroupID.x * WORKGROUP_SIZE * WORKGROUP_LOAD_COUNT + localInd * WORKGROUP_LOAD_COUNT;
+	// Load the current particle's info
+	vec2 particlePos = particlesPosIn[gl_GlobalInvocationID.x];
+	vec2 particleVel = particlesVelIn[gl_GlobalInvocationID.x];
+	vec2 accel = vec2(0);
 
-	// Load the particle infos
-	Particle particles[WORKGROUP_LOAD_COUNT];
-	for(uint i = 0; i != WORKGROUP_LOAD_COUNT; ++i)
-		particles[i] = particlesIn[i + globalInd];
-
-	vec2 accels[WORKGROUP_LOAD_COUNT];
-	for(uint i = 0; i != WORKGROUP_LOAD_COUNT; ++i)
-		accels[i] = vec2(0);
-
-	// Calculate all forces on the current particles
-	for(uint loadInd = localInd; loadInd < push.particleCount; loadInd += WORKGROUP_SIZE) {
+	for(uint i = 0; i != push.particleCount; i += gl_WorkGroupSize.x) {
 		// Load the corresponding particle into the shared buffer
-		sharedParticles[localInd] = vec3(particlesIn[loadInd].pos, particlesIn[loadInd].mass);
+		sharedParticlesPos[gl_LocalInvocationID.x] = particlesPosIn[i + gl_LocalInvocationID.x];
+		sharedParticlesMass[gl_LocalInvocationID.x] = particlesMassIn[i + gl_LocalInvocationID.x];
 
 		// Wait for all threads to load
 		barrier();
 
-		// Calculate all interactions for the current particles
-		for(uint i = 0; i != WORKGROUP_LOAD_COUNT; ++i) {
-			for(uint j = 0; j != WORKGROUP_SIZE; ++j) {
-				// Calculate the distance between the two particles
-				vec2 distVec = sharedParticles[j].xy - particles[i].pos;
-				float dist = sqrt(dot(distVec, distVec) + push.softeningLenSqr);
+		// Calculate all interactions for the current particle
+		for(uint j = 0; j != gl_WorkGroupSize.x; ++j) {
+			// Calculate the distance between the two particles
+			vec2 distVec = sharedParticlesPos[j] - particlePos;
+			float dist = sqrt(dot(distVec, distVec) + push.softeningLenSqr);
 
-				// Apply the formula to get the current acceleration and add it to the particle's total acceleration
-				accels[i] += distVec * sharedParticles[j].z / (dist * dist * dist);
-			}
+			// Apply the formula to get the current acceleration and add it to the particle's total acceleration
+			accel += distVec * sharedParticlesMass[j] * push.gravitationalConst / (dist * dist * dist);
 		}
 
 		// Wait for all threads to finish
 		barrier();
 	}
 
-	// Update the particles' infos
-	for(uint i = 0; i != WORKGROUP_LOAD_COUNT; ++i) {
-		// Set the new particle's velocity and position
-		vec2 newVel = particles[i].vel + accels[i] * push.simulationTime * push.gravitationalConst;
-		vec2 newPos = particles[i].pos + (particles[i].vel + newVel) * 0.5 * push.simulationTime;
+	// Set the new particle's velocity and position
+	vec2 newVel = particleVel + accel * push.simulationTime;
+	vec2 newPos = particlePos + (particleVel + newVel) * 0.5 * push.simulationTime;
 
-		// Update the output particle's info
-		particlesOut[globalInd + i].pos = newPos;
-		particlesOut[globalInd + i].vel = newVel;
-	}
+	// Update the output particle's info
+	particlesPosOut[gl_GlobalInvocationID.x] = newPos;
+	particlesVelOut[gl_GlobalInvocationID.x] = newVel;
 }

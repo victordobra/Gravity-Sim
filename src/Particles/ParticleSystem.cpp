@@ -136,7 +136,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.size = (VkDeviceSize)(alignedParticleCount * sizeof(Particle)),
+			.size = alignedParticleCount * ((sizeof(Vec2) << 1) + sizeof(float)),
 			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 1,
@@ -184,17 +184,36 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to map Vulkan particle staging buffer memory! Error code: %s", string_VkResult(result));
 		
 		// Copy the particle infos to the staging buffer
-		memcpy(stagingData, particles, alignedParticleCount * sizeof(Particle));
+		Vec2* vec2Iter = (Vec2*)stagingData;
+		for(size_t i = 0; i != alignedParticleCount; ++i, ++vec2Iter)
+			*vec2Iter = particles[i].pos;
+		for(size_t i = 0; i != alignedParticleCount; ++i, ++vec2Iter)
+			*vec2Iter = particles[i].vel;
+		float* floatIter = (float*)vec2Iter;
+		for(size_t i = 0; i != alignedParticleCount; ++i, ++floatIter)
+			*floatIter = particles[i].mass;
 
 		// Unmap the staging buffer's memory
 		vkUnmapMemory(device->GetDevice(), stagingMemory);
 
-		// Set the particle buffer create info
-		VkBufferCreateInfo bufferInfo {
+		// Set the particle position and velocity buffer create info
+		VkBufferCreateInfo posVelBufferInfo {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.size = alignedParticleCount * sizeof(Particle),
+			.size = alignedParticleCount * sizeof(Vec2),
+			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			.sharingMode = (device->GetQueueFamilyIndexArraySize() == 1) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT,
+			.queueFamilyIndexCount = device->GetQueueFamilyIndexArraySize(),
+			.pQueueFamilyIndices = device->GetQueueFamilyIndexArray()
+		};
+
+		// Set the particle mass buffer create info
+		VkBufferCreateInfo massBufferInfo {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.size = alignedParticleCount * sizeof(float),
 			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			.sharingMode = (device->GetQueueFamilyIndexArraySize() == 1) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT,
 			.queueFamilyIndexCount = device->GetQueueFamilyIndexArraySize(),
@@ -203,22 +222,37 @@ namespace gsim {
 
 		// Create the particle buffers
 		for(uint32_t i = 0; i != 3; ++i) {
-			result = vkCreateBuffer(device->GetDevice(), &bufferInfo, nullptr, buffers + i);
+			// Create the position buffer
+			result = vkCreateBuffer(device->GetDevice(), &posVelBufferInfo, nullptr, &(buffers[i].posBuffer));
 			if(result != VK_SUCCESS)
-				GSIM_THROW_EXCEPTION("Failed to create Vulkan particle buffer! Error code: %s", string_VkResult(result));
+				GSIM_THROW_EXCEPTION("Failed to create Vulkan particle buffers! Error code: %s", string_VkResult(result));
+			
+			// Create the velocity buffer
+			result = vkCreateBuffer(device->GetDevice(), &posVelBufferInfo, nullptr, &(buffers[i].velBuffer));
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to create Vulkan particle buffers! Error code: %s", string_VkResult(result));
+
+			// Create the mass buffer
+			result = vkCreateBuffer(device->GetDevice(), &massBufferInfo, nullptr, &(buffers[i].massBuffer));
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to create Vulkan particle buffers! Error code: %s", string_VkResult(result));
 		}
 
 		// Get the buffers' memory requirements
-		VkMemoryRequirements memRequirements;
-		vkGetBufferMemoryRequirements(device->GetDevice(), buffers[0], &memRequirements);
+		VkMemoryRequirements posVelMemRequirements, massMemRequirements;
+		vkGetBufferMemoryRequirements(device->GetDevice(), buffers[0].posBuffer, &posVelMemRequirements);
+		vkGetBufferMemoryRequirements(device->GetDevice(), buffers[0].massBuffer, &massMemRequirements);
 
 		// Get the buffers' memory type index
-		uint32_t memTypeIndex = device->GetMemoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memRequirements.memoryTypeBits);
+		uint32_t memTypeIndex = device->GetMemoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, posVelMemRequirements.memoryTypeBits & massMemRequirements.memoryTypeBits);
 		if(memTypeIndex == UINT32_MAX)
 			GSIM_THROW_EXCEPTION("Failed to find supported memory type for Vulkan particle buffer!");
 		
-		// Align the required size to the required alignment
-		VkDeviceSize alignedSize = (memRequirements.size + memRequirements.alignment - 1) & ~(memRequirements.alignment - 1);
+		// Align the required sizes to the required alignment
+		VkDeviceSize maxAlignment = (posVelMemRequirements.alignment > massMemRequirements.alignment) ? posVelMemRequirements.alignment : massMemRequirements.alignment;
+		VkDeviceSize alignedPosVelSize = (posVelMemRequirements.size + maxAlignment - 1) & ~(maxAlignment - 1);
+		VkDeviceSize alignedMassSize = (massMemRequirements.size + maxAlignment - 1) & ~(maxAlignment - 1);
+		VkDeviceSize alignedSize = (alignedPosVelSize << 1) + alignedMassSize;
 		
 		// Set the memory alloc info
 		VkMemoryAllocateInfo allocInfo {
@@ -235,7 +269,18 @@ namespace gsim {
 		
 		// Bind the buffers to their memory
 		for(uint32_t i = 0; i != 3; ++i) {
-			result = vkBindBufferMemory(device->GetDevice(), buffers[i], bufferMemory, i * alignedSize);
+			// Bind the position buffer
+			result = vkBindBufferMemory(device->GetDevice(), buffers[i].posBuffer, bufferMemory, i * alignedSize);
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to bind Vulkan particle buffers to their memory! Error code: %s", string_VkResult(result));
+			
+			// Bind the velocity buffer
+			result = vkBindBufferMemory(device->GetDevice(), buffers[i].velBuffer, bufferMemory, i * alignedSize + alignedPosVelSize);
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to bind Vulkan particle buffers to their memory! Error code: %s", string_VkResult(result));
+			
+			// Bind the mass buffer
+			result = vkBindBufferMemory(device->GetDevice(), buffers[i].massBuffer, bufferMemory, i * alignedSize + (alignedPosVelSize << 1));
 			if(result != VK_SUCCESS)
 				GSIM_THROW_EXCEPTION("Failed to bind Vulkan particle buffers to their memory! Error code: %s", string_VkResult(result));
 		}
@@ -268,15 +313,29 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to begin recording Vulkan particle transfer command buffer! Error code: %s", string_VkResult(result));
 		
-		// Transfer all particles from the staging buffer to all particle buffers
-		VkBufferCopy copyRegion {
+		// Set the copy regions for all particle components
+		VkBufferCopy posCopyRegion {
 			.srcOffset = 0,
 			.dstOffset = 0,
-			.size = alignedParticleCount * sizeof(Particle)
+			.size = alignedParticleCount * sizeof(Vec2)
+		};
+		VkBufferCopy velCopyRegion {
+			.srcOffset = alignedParticleCount * sizeof(Vec2),
+			.dstOffset = 0,
+			.size = alignedParticleCount * sizeof(Vec2)
+		};
+		VkBufferCopy massCopyRegion {
+			.srcOffset = alignedParticleCount * (sizeof(Vec2) << 1),
+			.dstOffset = 0,
+			.size = alignedParticleCount * sizeof(float)
 		};
 
-		for(uint32_t i = 0; i != 3; ++i)
-			vkCmdCopyBuffer(commandBuffer, stagingBuffer, buffers[i], 1, &copyRegion);
+		// Transfer all particles from the staging buffer to all particle buffers
+		for(uint32_t i = 0; i != 3; ++i) {
+			vkCmdCopyBuffer(commandBuffer, stagingBuffer, buffers[i].posBuffer, 1, &posCopyRegion);
+			vkCmdCopyBuffer(commandBuffer, stagingBuffer, buffers[i].velBuffer, 1, &velCopyRegion);
+			vkCmdCopyBuffer(commandBuffer, stagingBuffer, buffers[i].massBuffer, 1, &massCopyRegion);
+		}
 		
 		// End recording the command buffer
 		vkEndCommandBuffer(commandBuffer);
@@ -428,7 +487,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.size = (VkDeviceSize)(alignedParticleCount * sizeof(Particle)),
+			.size = alignedParticleCount * ((sizeof(Vec2) << 1) + sizeof(float)),
 			.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 1,
@@ -497,14 +556,27 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to begin recording Vulkan particle transfer command buffer! Error code: %s", string_VkResult(result));
 		
-		// Transfer the latest particle infos to the staging buffer
-		VkBufferCopy copyRegion {
+		// Set the copy regions for all particle components
+		VkBufferCopy posCopyRegion {
 			.srcOffset = 0,
 			.dstOffset = 0,
-			.size = alignedParticleCount * sizeof(Particle)
+			.size = alignedParticleCount * sizeof(Vec2)
+		};
+		VkBufferCopy velCopyRegion {
+			.srcOffset = alignedParticleCount * sizeof(Vec2),
+			.dstOffset = 0,
+			.size = alignedParticleCount * sizeof(Vec2)
+		};
+		VkBufferCopy massCopyRegion {
+			.srcOffset = alignedParticleCount * (sizeof(Vec2) << 1),
+			.dstOffset = 0,
+			.size = alignedParticleCount * sizeof(float)
 		};
 
-		vkCmdCopyBuffer(commandBuffer, buffers[computeInputIndex], stagingBuffer, 1, &copyRegion);
+		// Transfer the latest particle infos to the staging buffer
+		vkCmdCopyBuffer(commandBuffer, buffers[computeInputIndex].posBuffer, stagingBuffer, 1, &posCopyRegion);
+		vkCmdCopyBuffer(commandBuffer, buffers[computeInputIndex].velBuffer, stagingBuffer, 1, &velCopyRegion);
+		vkCmdCopyBuffer(commandBuffer, buffers[computeInputIndex].massBuffer, stagingBuffer, 1, &massCopyRegion);
 		
 		// End recording the command buffer
 		vkEndCommandBuffer(commandBuffer);
@@ -556,7 +628,15 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to map Vulkan particle staging buffer memory! Error code: %s", string_VkResult(result));
 
 		// Copy the staging buffer's data to the given particle array
-		memcpy(particles, stagingData, particleCount * sizeof(Particle));
+		Vec2* vec2Iter = (Vec2*)stagingData;
+		for(size_t i = 0; i != particleCount; ++i)
+			*vec2Iter = particles[i].pos;
+		vec2Iter += alignedParticleCount;
+		for(size_t i = 0; i != particleCount; ++i)
+			*vec2Iter = particles[i].vel;
+		float* floatIter = (float*)(vec2Iter + alignedParticleCount);
+		for(size_t i = 0; i != particleCount; ++i)
+			*floatIter = particles[i].mass;
 
 		// Unmap the staging buffer's memory
 		vkUnmapMemory(device->GetDevice(), stagingMemory);
@@ -593,7 +673,10 @@ namespace gsim {
 	ParticleSystem::~ParticleSystem() {
 		// Destroy all Vulkan objects
 		vkFreeMemory(device->GetDevice(), bufferMemory, nullptr);
-		for(uint32_t i = 0; i != 3; ++i)
-			vkDestroyBuffer(device->GetDevice(), buffers[i], nullptr);
+		for(uint32_t i = 0; i != 3; ++i) {
+			vkDestroyBuffer(device->GetDevice(), buffers[i].posBuffer, nullptr);
+			vkDestroyBuffer(device->GetDevice(), buffers[i].velBuffer, nullptr);
+			vkDestroyBuffer(device->GetDevice(), buffers[i].massBuffer, nullptr);
+		}
 	}
 }

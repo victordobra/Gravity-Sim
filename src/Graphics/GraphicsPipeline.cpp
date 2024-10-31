@@ -97,29 +97,15 @@ namespace gsim {
 		// Set the vertex input binding and attribure descriptions
 		VkVertexInputBindingDescription vertexBinding {
 			.binding = 0,
-			.stride = sizeof(Particle),
+			.stride = sizeof(Vec2),
 			.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
 		};
 
-		VkVertexInputAttributeDescription vertexAttribures[] {
-			{
-				.location = 0,
-				.binding = 0,
-				.format = VK_FORMAT_R32G32_SFLOAT,
-				.offset = offsetof(Particle, pos)
-			},
-			{
-				.location = 1,
-				.binding = 0,
-				.format = VK_FORMAT_R32G32_SFLOAT,
-				.offset = offsetof(Particle, vel)
-			},
-			{
-				.location = 2,
-				.binding = 0,
-				.format = VK_FORMAT_R32_SFLOAT,
-				.offset = offsetof(Particle, mass)
-			}
+		VkVertexInputAttributeDescription vertexAttribute {
+			.location = 0,
+			.binding = 0,
+			.format = VK_FORMAT_R32G32_SFLOAT,
+			.offset = 0
 		};
 
 		// Set the vertex input state info
@@ -129,8 +115,8 @@ namespace gsim {
 			.flags = 0,
 			.vertexBindingDescriptionCount = 1,
 			.pVertexBindingDescriptions = &vertexBinding,
-			.vertexAttributeDescriptionCount = 3,
-			.pVertexAttributeDescriptions = vertexAttribures
+			.vertexAttributeDescriptionCount = 1,
+			.pVertexAttributeDescriptions = &vertexAttribute
 		};
 
 		// Set the input assembly state info
@@ -380,7 +366,7 @@ namespace gsim {
 
 		// Bind the particle buffer
 		VkDeviceSize offset = 0;
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, particleSystem->GetBuffers() + particleSystem->GetGrahpicsIndex(), &offset);
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &(particleSystem->GetBuffers()[particleSystem->GetGrahpicsIndex()].posBuffer), &offset);
 		particleSystem->NextGraphicsIndex();
 
 		// Push the constants to the command buffer

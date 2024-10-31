@@ -234,6 +234,8 @@ int main(int argc, char** args) {
 
 			// Store the clock start, for benchmarking
 			programInfo.clockStart = clock();
+			programInfo.simulationCount = 0;
+			programInfo.targetSimulationCount = 0;
 
 			// Run all the simulations
 			while(programInfo.simulationCount != programInfo.maxSimulationCount) {

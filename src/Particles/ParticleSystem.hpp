@@ -23,6 +23,15 @@ namespace gsim {
 			/// @brief The number of possible particle system generation variants.
 			GENERATE_TYPE_COUNT
 		};
+		/// @brief A struct containing all buffers for the particle infos.
+		struct ParticleBuffers {
+			/// @brief A buffer storing the particle positions.
+			VkBuffer posBuffer;
+			/// @brief A buffer storing the particle velocities.
+			VkBuffer velBuffer;
+			/// @brief A buffer storing the particle masses.
+			VkBuffer massBuffer;
+		};
 
 		ParticleSystem() = delete;
 		ParticleSystem(const ParticleSystem&) = delete;
@@ -97,8 +106,8 @@ namespace gsim {
 		}
 
 		/// @brief Gets the Vulkan buffers storing the particle infos.
-		/// @return A pointer to the array of buffers.
-		VkBuffer* GetBuffers() {
+		/// @return A pointer to the array of particle buffers.
+		ParticleBuffers* GetBuffers() {
 			return buffers;
 		}
 		/// @brief Gets the Vulkan device memory block the buffers are bound to.
@@ -162,7 +171,7 @@ namespace gsim {
 		float simulationTime;
 		float softeningLen;
 		
-		VkBuffer buffers[3];
+		ParticleBuffers buffers[3];
 		VkDeviceMemory bufferMemory;
 
 		size_t graphicsIndex = 0;

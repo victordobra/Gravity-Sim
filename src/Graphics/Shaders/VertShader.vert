@@ -2,8 +2,6 @@
 
 // Vertex input
 layout(location = 0) in vec2 pos;
-layout(location = 1) in vec2 vel;
-layout(location = 2) in float mass;
 
 // Push constants
 layout(push_constant) uniform PushConstants {

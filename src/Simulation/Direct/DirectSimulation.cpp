@@ -6,8 +6,7 @@
 
 namespace gsim {
 	// Constants
-	const uint32_t WORKGROUP_SIZE = 64;
-	const uint32_t WORKGROUP_LOAD_COUNT = 2;
+	const uint32_t WORKGROUP_SIZE = 128;
 
 	// Structs
 	struct PushConstants {
@@ -25,17 +24,33 @@ namespace gsim {
 
 	// Public functions
 	size_t DirectSimulation::GetRequiredParticleAlignment() {
-		return WORKGROUP_SIZE * WORKGROUP_LOAD_COUNT;
+		return WORKGROUP_SIZE;
 	}
 
 	DirectSimulation::DirectSimulation(VulkanDevice* device, ParticleSystem* particleSystem) : device(device), particleSystem(particleSystem) {
-		// Set the descriptor set layout binding
-		VkDescriptorSetLayoutBinding setLayoutBinding {
-			.binding = 0,
-			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			.descriptorCount = 1,
-			.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-			.pImmutableSamplers = nullptr
+		// Set the descriptor set layout bindings
+		VkDescriptorSetLayoutBinding setLayoutBindings[] {
+			{
+				.binding = 0,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.descriptorCount = 1,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
+			},
+			{
+				.binding = 1,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.descriptorCount = 1,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
+			},
+			{
+				.binding = 2,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.descriptorCount = 1,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
+			}
 		};
 
 		// Set the descriptor set layout info
@@ -43,8 +58,8 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.bindingCount = 1,
-			.pBindings = &setLayoutBinding
+			.bindingCount = 3,
+			.pBindings = setLayoutBindings
 		};
 
 		// Create the descriptor set layout
@@ -55,7 +70,7 @@ namespace gsim {
 		// Set the descriptor pool size
 		VkDescriptorPoolSize descriptorPoolSize {
 			.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			.descriptorCount = 3
+			.descriptorCount = 9
 		};
 
 		// Set the descriptor pool create info
@@ -90,30 +105,41 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan particle buffer descriptor sets! Error code: %s", string_VkResult(result));
 		
 		// Set the descriptor buffer infos
-		VkDescriptorBufferInfo descriptorBufferInfos[3];
-		for(size_t i = 0; i != 3; ++i) {
-			descriptorBufferInfos[i].buffer = particleSystem->GetBuffers()[i];
-			descriptorBufferInfos[i].offset = 0;
-			descriptorBufferInfos[i].range = VK_WHOLE_SIZE;
+		VkDescriptorBufferInfo descriptorBufferInfos[9];
+		for(size_t i = 0, ind = 0; i != 3; ++i) {
+			descriptorBufferInfos[ind].buffer = particleSystem->GetBuffers()[i].posBuffer;
+			descriptorBufferInfos[ind].offset = 0;
+			descriptorBufferInfos[ind].range = VK_WHOLE_SIZE;
+			++ind;
+			descriptorBufferInfos[ind].buffer = particleSystem->GetBuffers()[i].velBuffer;
+			descriptorBufferInfos[ind].offset = 0;
+			descriptorBufferInfos[ind].range = VK_WHOLE_SIZE;
+			++ind;
+			descriptorBufferInfos[ind].buffer = particleSystem->GetBuffers()[i].massBuffer;
+			descriptorBufferInfos[ind].offset = 0;
+			descriptorBufferInfos[ind].range = VK_WHOLE_SIZE;
+			++ind;
 		}
 
 		// Set the descriptor set writes
-		VkWriteDescriptorSet descriptorSetWrites[3];
-		for(size_t i = 0; i != 3; ++i) {
-			descriptorSetWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorSetWrites[i].pNext = nullptr;
-			descriptorSetWrites[i].dstSet = descriptorSets[i];
-			descriptorSetWrites[i].dstBinding = 0;
-			descriptorSetWrites[i].dstArrayElement = 0;
-			descriptorSetWrites[i].descriptorCount = 1;
-			descriptorSetWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			descriptorSetWrites[i].pImageInfo = nullptr;
-			descriptorSetWrites[i].pBufferInfo = descriptorBufferInfos + i;
-			descriptorSetWrites[i].pTexelBufferView = nullptr;
+		VkWriteDescriptorSet descriptorSetWrites[9];
+		for(size_t i = 0, ind = 0; i != 3; ++i) {
+			for(size_t j = 0; j != 3; ++j, ++ind) {
+				descriptorSetWrites[ind].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorSetWrites[ind].pNext = nullptr;
+				descriptorSetWrites[ind].dstSet = descriptorSets[i];
+				descriptorSetWrites[ind].dstBinding = j;
+				descriptorSetWrites[ind].dstArrayElement = 0;
+				descriptorSetWrites[ind].descriptorCount = 1;
+				descriptorSetWrites[ind].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				descriptorSetWrites[ind].pImageInfo = nullptr;
+				descriptorSetWrites[ind].pBufferInfo = descriptorBufferInfos + ind;
+				descriptorSetWrites[ind].pTexelBufferView = nullptr;
+			}
 		}
 
 		// Update the descriptor sets
-		vkUpdateDescriptorSets(device->GetDevice(), 3, descriptorSetWrites, 0, nullptr);
+		vkUpdateDescriptorSets(device->GetDevice(), 9, descriptorSetWrites, 0, nullptr);
 		
 		// Set the shader module create info
 		VkShaderModuleCreateInfo shaderModuleInfo {
@@ -152,28 +178,19 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan compute pipeline layout! Error code: %s", string_VkResult(result));
 		
-		// Set the specialization map entries
-		VkSpecializationMapEntry specializationEntries[] {
-			{
-				.constantID = 0,
-				.offset = 0,
-				.size = sizeof(uint32_t)
-			},
-			{
-				.constantID = 1,
-				.offset = sizeof(uint32_t),
-				.size = sizeof(uint32_t)
-			}
+		// Set the specialization map entry
+		VkSpecializationMapEntry specializationEntry {
+			.constantID = 0,
+			.offset = 0,
+			.size = sizeof(uint32_t)
 		};
 
 		// Set the specialization info
-		uint32_t specializationData[] { WORKGROUP_SIZE, WORKGROUP_LOAD_COUNT };
-
 		VkSpecializationInfo specializationInfo {
-			.mapEntryCount = 2,
-			.pMapEntries = specializationEntries,
-			.dataSize = sizeof(uint32_t) << 1,
-			.pData = specializationData
+			.mapEntryCount = 1,
+			.pMapEntries = &specializationEntry,
+			.dataSize = sizeof(uint32_t),
+			.pData = &WORKGROUP_SIZE
 		};
 		
 		// Set the pipeline create info
@@ -290,7 +307,7 @@ namespace gsim {
 			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &pushConstants);
 
 			// Run the shader
-			vkCmdDispatch(commandBuffer, pushConstants.particleCount / WORKGROUP_SIZE / WORKGROUP_LOAD_COUNT, 1, 1);
+			vkCmdDispatch(commandBuffer, pushConstants.particleCount / WORKGROUP_SIZE, 1, 1);
 
 			// Add the pipeline barrier
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
