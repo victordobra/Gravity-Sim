@@ -57,10 +57,10 @@ void main() {
 		for(uint j = 0; j != gl_WorkGroupSize.x; ++j) {
 			// Calculate the distance between the two particles
 			vec2 distVec = sharedParticlesPos[j] - particlePos;
-			float dist = sqrt(dot(distVec, distVec) + push.softeningLenSqr);
+			float invDist = inversesqrt(dot(distVec, distVec) + push.softeningLenSqr);
 
 			// Apply the formula to get the current acceleration and add it to the particle's total acceleration
-			accel += distVec * sharedParticlesMass[j] * push.gravitationalConst / (dist * dist * dist);
+			accel += distVec * sharedParticlesMass[j] * invDist * invDist * invDist;
 		}
 
 		// Wait for all threads to finish
@@ -69,7 +69,7 @@ void main() {
 
 	// Set the new particle's velocity and position
 	vec2 newVel = particleVel + accel * push.simulationTime;
-	vec2 newPos = particlePos + (particleVel + newVel) * 0.5 * push.simulationTime;
+	vec2 newPos = particlePos + (particleVel + newVel) * 0.5 * push.simulationTime * push.gravitationalConst;
 
 	// Update the output particle's info
 	particlesPosOut[gl_GlobalInvocationID.x] = newPos;
