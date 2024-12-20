@@ -235,32 +235,22 @@ namespace gsim {
 			.pNext = nullptr,
 			.commandPool = device->GetComputeCommandPool(),
 			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-			.commandBufferCount = 1
+			.commandBufferCount = 2
 		};
 
-		// Allocate the command buffer
-		result = vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer);
+		// Allocate the command buffers
+		result = vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, commandBuffers);
 		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
+			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan simulation command buffers! Error code: %s", string_VkResult(result));
 	}
 
 	void DirectSimulation::RunSimulations(uint32_t simulationCount) {
-		// Exit the function if no simulation should be run
-		if(!simulationCount)
-			return;
-		
-		// Wait for the simulation fence
-		VkResult result = vkWaitForFences(device->GetDevice(), 1, &simulationFence, VK_TRUE, UINT64_MAX);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to wait for Vulkan simulation fence! Error code: %s", string_VkResult(result));
-		
-		// Reset the simulation fence
-		result = vkResetFences(device->GetDevice(), 1, &simulationFence);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to reset Vulkan simulation fence! Error code: %s", string_VkResult(result));
-		
+		// Set the new command buffer index
+		commandBufferIndex ^= 1;
+		VkCommandBuffer commandBuffer = commandBuffers[commandBufferIndex];
+
 		// Reset the command buffer
-		result = vkResetCommandBuffer(commandBuffer, 0);
+		VkResult result = vkResetCommandBuffer(commandBuffer, 0);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to reset Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
 		
@@ -321,6 +311,16 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to end recording Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
 
+		// Wait for the simulation fence
+		result = vkWaitForFences(device->GetDevice(), 1, &simulationFence, VK_TRUE, UINT64_MAX);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to wait for Vulkan simulation fence! Error code: %s", string_VkResult(result));
+		
+		// Reset the simulation fence
+		result = vkResetFences(device->GetDevice(), 1, &simulationFence);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to reset Vulkan simulation fence! Error code: %s", string_VkResult(result));
+
 		// Set the submit info
 		VkSubmitInfo submitInfo {
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -329,7 +329,7 @@ namespace gsim {
 			.pWaitSemaphores = nullptr,
 			.pWaitDstStageMask = nullptr,
 			.commandBufferCount = 1,
-			.pCommandBuffers = &commandBuffer,
+			.pCommandBuffers = commandBuffers + commandBufferIndex,
 			.signalSemaphoreCount = 0,
 			.pSignalSemaphores = nullptr
 		};
@@ -345,7 +345,7 @@ namespace gsim {
 		vkWaitForFences(device->GetDevice(), 1, &simulationFence, VK_TRUE, UINT64_MAX);
 
 		// Destroy the pipeline's objects
-		vkFreeCommandBuffers(device->GetDevice(), device->GetComputeCommandPool(), 1, &commandBuffer);
+		vkFreeCommandBuffers(device->GetDevice(), device->GetComputeCommandPool(), 2, commandBuffers);
 		vkDestroyFence(device->GetDevice(), simulationFence, nullptr);
 		vkDestroyPipeline(device->GetDevice(), pipeline, nullptr);
 		vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);

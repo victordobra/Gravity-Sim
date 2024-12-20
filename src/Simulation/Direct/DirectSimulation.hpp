@@ -101,6 +101,7 @@ namespace gsim {
 		VkPipeline pipeline;
 
 		VkFence simulationFence;
-		VkCommandBuffer commandBuffer;
+		VkCommandBuffer commandBuffers[2];
+		uint32_t commandBufferIndex = 0;
 	};
 }
