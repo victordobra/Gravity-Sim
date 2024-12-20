@@ -59,7 +59,7 @@ void main() {
 			float invDist = inversesqrt(dot(distVec, distVec) + push.softeningLenSqr);
 
 			// Apply the formula to get the current acceleration and add it to the particle's total acceleration
-			accel += distVec * sharedParticlesMass[j] * invDist * invDist * invDist;
+			accel += distVec * (sharedParticlesMass[j] * invDist * invDist * invDist);
 		}
 
 		// Load the last particle's info
@@ -78,7 +78,7 @@ void main() {
 		float invDist = inversesqrt(dot(distVec, distVec) + push.softeningLenSqr);
 
 		// Apply the formula to get the current acceleration and add it to the particle's total acceleration
-		accel += distVec * lastMass * invDist * invDist * invDist;
+		accel += distVec * (lastMass * invDist * invDist * invDist);
 
 		// Wait for all threads
 		barrier();
@@ -90,6 +90,6 @@ void main() {
 
 	vec2 newVel = particleVel + accel;
 	particlesVelOut[gl_GlobalInvocationID.x] = newVel;
-	vec2 newPos = particlePos + (particleVel + newVel) * 0.5 * push.simulationTime;
+	vec2 newPos = particlePos + (particleVel + newVel) * (0.5 * push.simulationTime);
 	particlesPosOut[gl_GlobalInvocationID.x] = newPos;
 }
