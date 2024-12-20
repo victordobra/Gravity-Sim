@@ -1,7 +1,7 @@
 #version 430
 
 // Constants
-layout(constant_id = 0) const uint WORKGROUP_SIZE = 128;
+layout(constant_id = 0) const uint WORKGROUP_SIZE = 64;
 
 // Particle buffers
 layout(set = 0, binding = 0) buffer ParticlesPosInBuffer {
@@ -42,19 +42,18 @@ shared float sharedParticlesMass[WORKGROUP_SIZE];
 void main() {
 	// Load the current particle's info
 	vec2 particlePos = particlesPosIn[gl_GlobalInvocationID.x];
-	vec2 particleVel = particlesVelIn[gl_GlobalInvocationID.x];
 	vec2 accel = vec2(0);
 
-	for(uint i = 0; i != push.particleCount; i += gl_WorkGroupSize.x) {
-		// Load the corresponding particle into the shared buffer
-		sharedParticlesPos[gl_LocalInvocationID.x] = particlesPosIn[i + gl_LocalInvocationID.x];
-		sharedParticlesMass[gl_LocalInvocationID.x] = particlesMassIn[i + gl_LocalInvocationID.x];
+	// Load the first particles into the shared buffer
+	sharedParticlesPos[gl_LocalInvocationID.x] = particlesPosIn[gl_LocalInvocationID.x];
+	sharedParticlesMass[gl_LocalInvocationID.x] = particlesMassIn[gl_LocalInvocationID.x];
 
-		// Wait for all threads to load
-		barrier();
+	// Wait for all threads to load
+	barrier();
 
+	for(uint i = WORKGROUP_SIZE; i != push.particleCount; i += WORKGROUP_SIZE) {
 		// Calculate all interactions for the current particle
-		for(uint j = 0; j != gl_WorkGroupSize.x; ++j) {
+		for(uint j = 0; j != WORKGROUP_SIZE - 1; ++j) {
 			// Calculate the distance between the two particles
 			vec2 distVec = sharedParticlesPos[j] - particlePos;
 			float invDist = inversesqrt(dot(distVec, distVec) + push.softeningLenSqr);
@@ -63,15 +62,34 @@ void main() {
 			accel += distVec * sharedParticlesMass[j] * invDist * invDist * invDist;
 		}
 
-		// Wait for all threads to finish
+		// Load the last particle's info
+		vec2 lastPos = sharedParticlesPos[WORKGROUP_SIZE - 1];
+		float lastMass = sharedParticlesMass[WORKGROUP_SIZE - 1];
+
+		// Wait for all threads
+		barrier();
+
+		// Load the next particles into the shared buffer
+		sharedParticlesPos[gl_LocalInvocationID.x] = particlesPosIn[i + gl_LocalInvocationID.x];
+		sharedParticlesMass[gl_LocalInvocationID.x] = particlesMassIn[i + gl_LocalInvocationID.x];
+
+		// Calculate the distance between the two particles
+		vec2 distVec = lastPos - particlePos;
+		float invDist = inversesqrt(dot(distVec, distVec) + push.softeningLenSqr);
+
+		// Apply the formula to get the current acceleration and add it to the particle's total acceleration
+		accel += distVec * lastMass * invDist * invDist * invDist;
+
+		// Wait for all threads
 		barrier();
 	}
 
 	// Set the new particle's velocity and position
-	vec2 newVel = particleVel + accel * push.simulationTime;
-	vec2 newPos = particlePos + (particleVel + newVel) * 0.5 * push.simulationTime * push.gravitationalConst;
+	vec2 particleVel = particlesVelIn[gl_GlobalInvocationID.x];
+	accel *= push.simulationTime * push.gravitationalConst;
 
-	// Update the output particle's info
-	particlesPosOut[gl_GlobalInvocationID.x] = newPos;
+	vec2 newVel = particleVel + accel;
 	particlesVelOut[gl_GlobalInvocationID.x] = newVel;
+	vec2 newPos = particlePos + (particleVel + newVel) * 0.5 * push.simulationTime;
+	particlesPosOut[gl_GlobalInvocationID.x] = newPos;
 }
