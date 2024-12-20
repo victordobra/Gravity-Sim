@@ -51,7 +51,7 @@ void main() {
 	// Wait for all threads to load
 	barrier();
 
-	for(uint i = WORKGROUP_SIZE; i != push.particleCount; i += WORKGROUP_SIZE) {
+	for(uint i = WORKGROUP_SIZE; i != push.particleCount - WORKGROUP_SIZE; i += WORKGROUP_SIZE) {
 		// Calculate all interactions for the current particle
 		for(uint j = 0; j != WORKGROUP_SIZE - 1; ++j) {
 			// Calculate the distance between the two particles
@@ -82,6 +82,16 @@ void main() {
 
 		// Wait for all threads
 		barrier();
+	}
+
+	// Calculate all interactions for the leftover particles
+	for(uint i = 0; i != WORKGROUP_SIZE; ++i) {
+		// Calculate the distance between the two particles
+		vec2 distVec = sharedParticlesPos[i] - particlePos;
+		float invDist = inversesqrt(dot(distVec, distVec) + push.softeningLenSqr);
+
+		// Apply the formula to get the current acceleration and add it to the particle's total acceleration
+		accel += distVec * (sharedParticlesMass[i] * invDist * invDist * invDist);
 	}
 
 	// Set the new particle's velocity and position
