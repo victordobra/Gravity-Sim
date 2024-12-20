@@ -6,7 +6,7 @@
 
 namespace gsim {
 	// Constants
-	const uint32_t WORKGROUP_SIZE = 128;
+	const uint32_t WORKGROUP_SIZE = 64;
 
 	// Structs
 	struct PushConstants {

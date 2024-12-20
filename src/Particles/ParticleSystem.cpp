@@ -423,9 +423,15 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("The particle input file must contain at least one valid particle!");
 		
 		// Set the aligned particle count
-		alignedParticleCount = particleCount + particleCountAlignment - 1;
-		alignedParticleCount -= alignedParticleCount % particleCountAlignment;
+		alignedParticleCount = (particleCount + (particleCountAlignment << 1) - 1) & ~(particleCountAlignment - 1);
+		if(alignedParticleCount < particleCountAlignment << 1)
+			alignedParticleCount = particleCountAlignment << 1;
 
+		// Fill the remaining particle infos
+		for(size_t i = particleCount; i != alignedParticleCount; ++i)
+			particles[i] = { 0, 0, 0, 0, 0 };
+
+		// Create the Vulkan objects
 		// Create the Vulkan objects
 		CreateVulkanObjects(particles);
 
@@ -444,8 +450,7 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("The simulation must contain at least one particle!");
 
 		// Set the aligned particle count
-		alignedParticleCount = particleCount + particleCountAlignment - 1;
-		alignedParticleCount -= alignedParticleCount % particleCountAlignment;
+		alignedParticleCount = (particleCount + (particleCountAlignment << 1) - 1) & ~(particleCountAlignment - 1);
 		
 		// Allocate the particle array
 		Particle* particles = (Particle*)malloc(alignedParticleCount * sizeof(Particle));
