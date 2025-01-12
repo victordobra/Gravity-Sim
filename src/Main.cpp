@@ -31,7 +31,6 @@ const char* const ARGS_HELP =
 	"\t--generate-size: The radius of the resulting generation's size.\n"
 	"\t--min-mass: The minimum mass of the generated particles.\n"
 	"\t--max-mass: The maximum mass of the generated particles.\n"
-	"\t--system-size: The side length of the particle system's bounding box.\n"
 	"\t--gravitational-const: The gravitational constant used for the simulation. Defaulted to 1.\n"
 	"\t--simulation-time: The time interval length, in seconds, simulated in one instance. Defaulted to 1e-3.\n"
 	"\t--softening-len: The softening length used to soften the extreme forces that would usually result from close interactions. Defaulted to 0.2.\n"
@@ -51,7 +50,6 @@ struct ProgramInfo {
 	float generateSize = 0.0f;
 	float minMass = 0.0f;
 	float maxMass = 0.0f;
-	float systemSize = 0.0f;
 	float gravitationalConst = 1.0f;
 	float simulationTime = 0.001f;
 	float softeningLen = 0.2f;
@@ -71,7 +69,8 @@ struct ProgramInfo {
 	gsim::GraphicsPipeline* graphicsPipeline;
 	gsim::DirectSimulation* simulation;
 
-	gsim::Vec2 cameraPos { 0.0f, 0.0f };
+	gsim::Vec2 cameraPos;
+	float cameraSize;
 	float cameraZoom = 1.0f;
 	gsim::Window::MousePos mousePos;
 
@@ -104,8 +103,8 @@ static void WindowDrawCallback(void* userData, void* args) {
 
 		// Calculate the relative world pos
 		gsim::Vec2 relativeWorldPos { (float)relativePos.x / programInfo->window->GetWindowInfo().width * 2, -((float)relativePos.y / programInfo->window->GetWindowInfo().height * 2) };
-		relativeWorldPos.x *= programInfo->systemSize * aspectRatio / programInfo->cameraZoom;
-		relativeWorldPos.y *= programInfo->systemSize / programInfo->cameraZoom;
+		relativeWorldPos.x *= programInfo->cameraSize * aspectRatio / programInfo->cameraZoom;
+		relativeWorldPos.y *= programInfo->cameraSize / programInfo->cameraZoom;
 
 		// Set the new camera pos
 		programInfo->cameraPos.x -= relativeWorldPos.x;
@@ -116,7 +115,7 @@ static void WindowDrawCallback(void* userData, void* args) {
 	programInfo->mousePos = newMousePos;
 
 	// Render the particles
-	programInfo->graphicsPipeline->RenderParticles(programInfo->cameraPos, { programInfo->systemSize * aspectRatio / programInfo->cameraZoom, programInfo->systemSize / programInfo->cameraZoom });
+	programInfo->graphicsPipeline->RenderParticles(programInfo->cameraPos, { programInfo->cameraSize * aspectRatio / programInfo->cameraZoom, programInfo->cameraSize / programInfo->cameraZoom });
 
 	// Store the clock end and calculate the target simulation count
 	programInfo->targetSimulationCount = (uint64_t)((float)(clock() - programInfo->clockStart) / CLOCKS_PER_SEC / programInfo->simulationTime);
@@ -175,8 +174,6 @@ int main(int argc, char** args) {
 			programInfo.minMass = strtof(args[i] + 11, nullptr);
 		} else if(!strncmp(args[i], "--max-mass=", 11)) {
 			programInfo.maxMass = strtof(args[i] + 11, nullptr);
-		} else if(!strncmp(args[i], "--system-size=", 14)) {
-			programInfo.systemSize = strtof(args[i] + 14, nullptr);
 		} else if(!strncmp(args[i], "--gravitational-const=", 22)) {
 			programInfo.gravitationalConst = strtof(args[i] + 22, nullptr);
 		} else if(!strncmp(args[i], "--simulation-time=", 18)) {
@@ -224,9 +221,9 @@ int main(int argc, char** args) {
 
 			// Create the particle system
 			if(programInfo.particlesInFile) {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.systemSize, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
 			} else {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.systemSize, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
 			}
 
 			// Create the simulation
@@ -302,10 +299,14 @@ int main(int argc, char** args) {
 
 			// Create the particle system
 			if(programInfo.particlesInFile) {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.systemSize, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
 			} else {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.systemSize, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.softeningLen, gsim::DirectSimulation::GetRequiredParticleAlignment());
 			}
+
+			// Set the camera's starting info
+			programInfo.cameraPos = programInfo.particleSystem->GetCameraStartPos();
+			programInfo.cameraSize = programInfo.particleSystem->GetCameraStartSize();
 
 			// Create the pipelines
 			programInfo.graphicsPipeline = new gsim::GraphicsPipeline(programInfo.device, programInfo.swapChain, programInfo.particleSystem);

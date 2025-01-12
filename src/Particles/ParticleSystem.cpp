@@ -382,9 +382,37 @@ namespace gsim {
 		vkDestroyFence(device->GetDevice(), transferFence, nullptr);
 		vkDestroyBuffer(device->GetDevice(), stagingBuffer, nullptr);
 	}
+	void ParticleSystem::GetCameraInfo(const Particle* particles) {
+		Vec2 minCoords { INFINITY, INFINITY };
+		Vec2 maxCoords { -INFINITY, -INFINITY };
+
+		for(uint32_t i = 0; i != particleCount; ++i) {
+			Vec2 pos = particles[i].pos;
+
+			if(pos.x < minCoords.x)
+				minCoords.x = pos.x;
+			if(pos.x > maxCoords.x)
+				maxCoords.x = pos.x;
+			if(pos.y < minCoords.y)
+				minCoords.y = pos.y;
+			if(pos.y > maxCoords.y)
+				maxCoords.y = pos.y;
+		}
+
+		cameraStartPos = { (minCoords.x + maxCoords.x) * 0.5f, (minCoords.y + maxCoords.y) * 0.5f };
+		
+		float width = maxCoords.x - minCoords.x;
+		float height = maxCoords.y - minCoords.y;
+
+		if(width > height) {
+			cameraStartSize = width;
+		} else {
+			cameraStartSize = height;
+		}
+	}
 
 	// Public functions
-	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float systemSize, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment) : device(device), systemSize(systemSize), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
+	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment) : device(device), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
 		// Open the given file
 		FILE* fileInput = fopen(filePath, "r");
 		if(!fileInput)
@@ -432,13 +460,15 @@ namespace gsim {
 			particles[i] = { 0, 0, 0, 0, 0 };
 
 		// Create the Vulkan objects
-		// Create the Vulkan objects
 		CreateVulkanObjects(particles);
+
+		// Get the camera's starting info
+		GetCameraInfo(particles);
 
 		// Free the particles array
 		free(particles);
 	}
-	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment) : device(device), particleCount(particleCount), systemSize(systemSize), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
+	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment) : device(device), particleCount(particleCount), gravitationalConst(gravitationalConst), simulationTime(simulationTime), softeningLen(softeningLen) {
 		// Round the particle count down to the nearest even integer if the generate type is set to GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION
 		if(generateType == GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION) {
 			particleCount &= ~1;
@@ -479,6 +509,9 @@ namespace gsim {
 
 		// Create the Vulkan objects
 		CreateVulkanObjects(particles);
+
+		// Get the camera's starting info
+		GetCameraInfo(particles);
 
 		// Free the particles array
 		free(particles);

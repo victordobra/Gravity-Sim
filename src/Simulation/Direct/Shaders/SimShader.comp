@@ -26,7 +26,6 @@ layout(set = 1, binding = 2) buffer ParticlesMassOutBuffer {
 
 // Push constants
 layout(push_constant) uniform PushConstants {
-	float systemSize;
 	float simulationTime;
 	float gravitationalConst;
 	float softeningLenSqr;

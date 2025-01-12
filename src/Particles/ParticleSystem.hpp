@@ -40,12 +40,11 @@ namespace gsim {
 		/// @brief Loads a particle system from the given file.
 		/// @param device The Vulkan device to use for Vulkan-specific components.
 		/// @param filePath The path of the file to load the system from.
-		/// @param systemSize The side length of the system's bounding box.
 		/// @param gravitationalConst The gravitational constant used for the simulation.
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
 		/// @param particleCountAlignment The alignment to use for the particle count when creating the buffer. All extra particles are given a null mass, therefore they will not interfere with the simulation. Defaulted to 1.
-		ParticleSystem(VulkanDevice* device, const char* filePath, float systemSize, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment = 1);
+		ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment = 1);
 		/// @brief Generates a particle system based on the given parameters.
 		/// @param device The Vulkan device to use for Vulkan-specific components.
 		/// @param particleCount The number of particles in the system.
@@ -53,12 +52,11 @@ namespace gsim {
 		/// @param generateSize The radius of the resulting generation's size.
 		/// @param minMass The minimum possible value of the particles' mass.
 		/// @param maxMass The maximum possible value of the particles' mass.
-		/// @param systemSize The side length of the system's bounding box.
 		/// @param gravitationalConst The gravitational constant used for the simulation.
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
 		/// @param particleCountAlignment The alignment to use for the particle count when creating the buffer. All extra particles are given a null mass, therefore they will not interfere with the simulation. Defaulted to 1.
-		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float systemSize, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment = 1);
+		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float softeningLen, size_t particleCountAlignment = 1);
 
 		ParticleSystem& operator=(const ParticleSystem&) = delete;
 		ParticleSystem& operator=(ParticleSystem&&) noexcept = delete;
@@ -84,11 +82,6 @@ namespace gsim {
 		size_t GetAlignedParticleCount() const {
 			return alignedParticleCount;
 		}
-		/// @brief Gets the side length of the system's bounding box.
-		/// @return The side length of the system's bounding box.
-		float GetSystemSize() const {
-			return systemSize;
-		}
 		/// @brief Gets the gravitational constant used for the simulation.
 		/// @return The gravitational constant used for the simulation.
 		float GetGravitationalConst() const {
@@ -103,6 +96,17 @@ namespace gsim {
 		/// @return The softening length used to soften the extreme forces that would usually result from close interactions.
 		float GetSofteningLen() const {
 			return softeningLen;
+		}
+
+		/// @brief Gets the camera's starting position.
+		/// @return The camera's starting position.
+		Vec2 GetCameraStartPos() const {
+			return cameraStartPos;
+		}
+		/// @brief Gets the camera's starting size.
+		/// @return The camera's starting size.
+		float GetCameraStartSize() const {
+			return cameraStartSize;
 		}
 
 		/// @brief Gets the Vulkan buffers storing the particle infos.
@@ -161,15 +165,18 @@ namespace gsim {
 		void GenerateParticlesGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass);
 		void GenerateParticlesSymmetricalGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass);
 		void CreateVulkanObjects(const Particle* particles);
+		void GetCameraInfo(const Particle* particles);
 
 		VulkanDevice* device;
 
 		size_t particleCount;
 		size_t alignedParticleCount;
-		float systemSize;
 		float gravitationalConst;
 		float simulationTime;
 		float softeningLen;
+
+		Vec2 cameraStartPos;
+		float cameraStartSize;
 		
 		ParticleBuffers buffers[3];
 		VkDeviceMemory bufferMemory;

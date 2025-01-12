@@ -10,7 +10,6 @@ namespace gsim {
 
 	// Structs
 	struct PushConstants {
-		float systemSize;
 		float simulationTime;
 		float gravitationalConst;
 		float softeningLenSqr;
@@ -272,7 +271,6 @@ namespace gsim {
 
 		// Set the push constants
 		PushConstants pushConstants {
-			.systemSize = particleSystem->GetSystemSize(),
 			.simulationTime = particleSystem->GetSimulationTime(),
 			.gravitationalConst = particleSystem->GetGravitationalConst(),
 			.softeningLenSqr = particleSystem->GetSofteningLen() * particleSystem->GetSofteningLen(),
