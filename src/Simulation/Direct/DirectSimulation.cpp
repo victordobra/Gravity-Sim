@@ -271,7 +271,7 @@ namespace gsim {
 
 		// Set the push constants
 		PushConstants pushConstants {
-			.simulationTime = particleSystem->GetSimulationTime(),
+			.simulationTime = particleSystem->GetSimulationTime() * particleSystem->GetSimulationSpeed(),
 			.gravitationalConst = particleSystem->GetGravitationalConst(),
 			.softeningLenSqr = particleSystem->GetSofteningLen() * particleSystem->GetSofteningLen(),
 			.particleCount = (uint32_t)particleSystem->GetAlignedParticleCount()
