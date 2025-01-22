@@ -136,8 +136,8 @@ static void WindowKeyCallback(void* userData, void* args) {
 		programInfo->cameraZoom += 0.1f * eventInfo.repeatCount;
 	} else if(eventInfo.key = '-') {
 		programInfo->cameraZoom -= 0.1f * eventInfo.repeatCount;
-		if(programInfo->cameraZoom < 0.5f)
-			programInfo->cameraZoom = 0.5f;
+		if(programInfo->cameraZoom < 0.2f)
+			programInfo->cameraZoom = 0.2f;
 	}
 }
 

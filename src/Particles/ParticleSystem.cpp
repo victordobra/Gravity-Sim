@@ -33,6 +33,10 @@ namespace gsim {
 		// Set the random seed
 		srand(time(nullptr));
 
+		// Calculate the orbit velocity
+		float avgMass = (minMass + maxMass) * 0.5f;
+		float vel = sqrt(gravitationalConst * particleCount * avgMass / (generateSize * generateSize * generateSize));
+
 		// Generate every particle
 		for(size_t i = 0; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar
@@ -47,7 +51,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * 0.08f, thetaCos * r * 0.08f };
+			particles[i].vel = { -thetaSin * r * vel, thetaCos * r * vel };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -57,8 +61,12 @@ namespace gsim {
 		// Set the random seed
 		srand(time(nullptr));
 
-		// Generate every particle in the first galaxy
+		// Calculate the orbit velocity
 		float galaxySize = generateSize / 3;
+		float avgMass = (minMass + maxMass) * 0.25f;
+		float vel = sqrt(gravitationalConst * particleCount * avgMass / (galaxySize * galaxySize * galaxySize));
+
+		// Generate every particle in the first galaxy
 		for(size_t i = 0; i != particleCount >> 1; ++i) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
 			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
@@ -72,7 +80,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos - galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * 0.25f + galaxySize * 0.1f, thetaCos * r * 0.25f };
+			particles[i].vel = { -thetaSin * r * vel + galaxySize * 0.1f, thetaCos * r * vel };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -92,7 +100,7 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos + galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * 0.25f - galaxySize * 0.1f, thetaCos * r * 0.25f };
+			particles[i].vel = { -thetaSin * r * vel - galaxySize * 0.1f, thetaCos * r * vel };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
@@ -102,8 +110,12 @@ namespace gsim {
 		// Set the random seed
 		srand(time(nullptr));
 
-		// Generate every particle in the first galaxy and mirror it in the second
+		// Calculate the orbit velocity
 		float galaxySize = generateSize / 3;
+		float avgMass = (minMass + maxMass) * 0.25f;
+		float vel = sqrt(gravitationalConst * particleCount * avgMass / (galaxySize * galaxySize * galaxySize));
+
+		// Generate every particle in the first galaxy and mirror it in the second
 		for(size_t i = 0; i != particleCount; i += 2) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
 			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
@@ -117,14 +129,14 @@ namespace gsim {
 			particles[i].pos = { r * thetaCos - galaxySize * 2, r * thetaSin };
 
 			// Set the particle's velocity to slowly orbit the galaxy's center
-			particles[i].vel = { -thetaSin * r * 0.25f + galaxySize * 0.1f, thetaCos * r * 0.25f };
+			particles[i].vel = { -thetaSin * r * vel + galaxySize * 0.1f, thetaCos * r * vel };
 
 			// Generate the particle's mass
 			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
 
 			// Mirror the particle from the first galaxy in the second
 			particles[i + 1].pos = { -particles[i].pos.x, particles[i].pos.y };
-			particles[i + 1].vel = { -thetaSin * r * 0.25f - galaxySize * 0.1f, -thetaCos * r * 0.25f };
+			particles[i + 1].vel = { -thetaSin * r * vel - galaxySize * 0.1f, -thetaCos * r * vel };
 			particles[i + 1].mass = particles[i].mass;
 		}
 	}
