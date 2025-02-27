@@ -7,24 +7,24 @@
 #include <vulkan/vulkan_core.h>
 
 namespace gsim {
-	/// @brief A particle simulation which uses the direct sum method.
-	class DirectSimulation {
+	/// @brief A particle simulation which uses the Barnes-Hut algorithm.
+	class BarnesHutSimulation {
 	public:
 		/// @brief Gets the particle alignment required for the simulation to run.
 		/// @return The particle alignment required for the simulation to run.
 		static size_t GetRequiredParticleAlignment();
 
-		DirectSimulation() = delete;
-		DirectSimulation(const DirectSimulation&) = delete;
-		DirectSimulation(DirectSimulation&&) noexcept = delete;
-		
-		/// @brief Creates a particle simulation which uses the direct sum method.
+		BarnesHutSimulation() = delete;
+		BarnesHutSimulation(const BarnesHutSimulation&) = delete;
+		BarnesHutSimulation(BarnesHutSimulation&&) noexcept = delete;
+
+		/// @brief Creates a particle simulation which uses the Barnes-Hut algorithm.
 		/// @param device The Vulkan device to create the compute pipeline in.
 		/// @param particleSystem The particle system whose particles to simulate.
-		DirectSimulation(VulkanDevice* device, ParticleSystem* particleSystem);
+		BarnesHutSimulation(VulkanDevice* device, ParticleSystem* particleSystem);
 
-		DirectSimulation& operator=(const DirectSimulation&) = delete;
-		DirectSimulation& operator=(DirectSimulation&&) noexcept = delete;
+		BarnesHutSimulation& operator=(const BarnesHutSimulation&) = delete;
+		BarnesHutSimulation& operator=(BarnesHutSimulation&&) = delete;
 
 		/// @brief Gets the Vulkan device that owns the compute pipeline.
 		/// @return A pointer to the Vulkan device wrapper object.
@@ -47,36 +47,30 @@ namespace gsim {
 			return particleSystem;
 		}
 
-		/// @brief Gets the Vulkan compute pipeline.
-		/// @return A handle to the Vulkan compute pipeline.
-		VkPipeline GetPipeline() {
-			return pipeline;
-		}
-		/// @brief Gets the Vulkan fence used to synchronize simulations.
-		/// @return A handle to the Vulkan fence used to synchronize simulations.
-		VkFence GetSimulationFence() {
-			return simulationFence;
-		}
-
-		/// @brief Runs the given number of simulations.
-		/// @param simulationCount The number of simulations to run.
-		void RunSimulations(uint32_t simulationCount);
-
-		/// @brief Destroys the direct simulation.
-		~DirectSimulation();
+		/// @brief Destroys the Barnes-Hut simulation.
+		~BarnesHutSimulation();
 	private:
+		void CreateBuffers();
+		void CreateDescriptorPool();
+		void CreateShaderModules();
+		void CreatePipelines();
+
 		VulkanDevice* device;
 		ParticleSystem* particleSystem;
 
-		VkDescriptorSetLayout setLayout;
-		VkDescriptorPool descriptorPool;
-		VkDescriptorSet descriptorSets[3];
-		VkShaderModule shaderModule;
-		VkPipelineLayout pipelineLayout;
-		VkPipeline pipeline;
+		VkBuffer stateBuffer;
+		VkBuffer treeBuffer;
+		VkBuffer boxBuffer;
+		VkDeviceMemory bufferMemory;
 
-		VkFence simulationFence;
-		VkCommandBuffer commandBuffers[2];
-		uint32_t commandBufferIndex = 0;
+		VkDescriptorSetLayout particleSetLayout;
+		VkDescriptorSetLayout barnesHutSetLayout;
+		VkDescriptorPool descriptorPool;
+		VkDescriptorSet descriptorSets[4];
+
+		VkShaderModule boxShader;
+
+		VkPipelineLayout pipelineLayout;
+		VkPipeline boxPipeline;
 	};
 }

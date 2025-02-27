@@ -1,5 +1,7 @@
 #include "ParticleSystem.hpp"
 #include "Debug/Exception.hpp"
+#include "Simulation/BarnesHut/BarnesHutSimulation.hpp"
+#include "Simulation/Direct/DirectSimulation.hpp"
 #include <stdint.h>
 #include <stdio.h>
 #include <math.h>
@@ -424,7 +426,17 @@ namespace gsim {
 	}
 
 	// Public functions
-	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, size_t particleCountAlignment) : device(device), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen) {
+	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen) {
+		// Get the particle count alignment
+		size_t particleCountAlignment;
+		if(simulationAlgorithm == SIMULATION_ALGORITHM_DIRECT_SUM) {
+			particleCountAlignment = DirectSimulation::GetRequiredParticleAlignment();
+		} else if(simulationAlgorithm == SIMULATION_ALGORITHM_BARNES_HUT) {
+			particleCountAlignment = BarnesHutSimulation::GetRequiredParticleAlignment();
+		} else {
+			GSIM_THROW_EXCEPTION("Invalid simulation algorithm requested!");
+		}
+
 		// Open the given file
 		FILE* fileInput = fopen(filePath, "r");
 		if(!fileInput)
@@ -463,9 +475,12 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("The particle input file must contain at least one valid particle!");
 		
 		// Set the aligned particle count
-		alignedParticleCount = (particleCount + (particleCountAlignment << 1) - 1) & ~(particleCountAlignment - 1);
-		if(alignedParticleCount < particleCountAlignment << 1)
-			alignedParticleCount = particleCountAlignment << 1;
+		alignedParticleCount = (particleCount + particleCountAlignment - 1) & ~(particleCountAlignment - 1);
+		
+		// Double the aligned particle count for a Barnes-Hut simulation
+		if(simulationAlgorithm == SIMULATION_ALGORITHM_BARNES_HUT) {
+			alignedParticleCount <<= 1;
+		}
 
 		// Fill the remaining particle infos
 		for(size_t i = particleCount; i != alignedParticleCount; ++i)
@@ -480,7 +495,17 @@ namespace gsim {
 		// Free the particles array
 		free(particles);
 	}
-	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, size_t particleCountAlignment) : device(device), particleCount(particleCount), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen) {
+	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(particleCount), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen) {
+		// Get the particle count alignment
+		size_t particleCountAlignment;
+		if(simulationAlgorithm == SIMULATION_ALGORITHM_DIRECT_SUM) {
+			particleCountAlignment = DirectSimulation::GetRequiredParticleAlignment();
+		} else if(simulationAlgorithm == SIMULATION_ALGORITHM_BARNES_HUT) {
+			particleCountAlignment = BarnesHutSimulation::GetRequiredParticleAlignment();
+		} else {
+			GSIM_THROW_EXCEPTION("Invalid simulation algorithm requested!");
+		}
+
 		// Round the particle count down to the nearest even integer if the generate type is set to GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION
 		if(generateType == GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION) {
 			particleCount &= ~1;
@@ -492,8 +517,13 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("The simulation must contain at least one particle!");
 
 		// Set the aligned particle count
-		alignedParticleCount = (particleCount + (particleCountAlignment << 1) - 1) & ~(particleCountAlignment - 1);
+		alignedParticleCount = (particleCount + particleCountAlignment - 1) & ~(particleCountAlignment - 1);
 		
+		// Double the aligned particle count for a Barnes-Hut simulation
+		if(simulationAlgorithm == SIMULATION_ALGORITHM_BARNES_HUT) {
+			alignedParticleCount <<= 1;
+		}
+
 		// Allocate the particle array
 		Particle* particles = (Particle*)malloc(alignedParticleCount * sizeof(Particle));
 		if(!particles)

@@ -23,6 +23,15 @@ namespace gsim {
 			/// @brief The number of possible particle system generation variants.
 			GENERATE_TYPE_COUNT
 		};
+		/// @brief An enum containing all implemented simulation algorithms.
+		enum SimulationAlgorithm {
+			/// @brief The direct-sum method, calculating every interaction between particles.
+			SIMULATION_ALGORITHM_DIRECT_SUM,
+			/// @brief The Barnes-Hut algorithm, organizing all particles in a quadtree.
+			SIMULATION_ALGORITHM_BARNES_HUT,
+			/// @brief The number of implemented simulation algorithms.
+			SIMULATION_ALGORITHM_COUNT
+		};
 		/// @brief A struct containing all buffers for the particle infos.
 		struct ParticleBuffers {
 			/// @brief A buffer storing the particle positions.
@@ -44,8 +53,8 @@ namespace gsim {
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param simulationSpeed The speed factor at which the simulation is run.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
-		/// @param particleCountAlignment The alignment to use for the particle count when creating the buffer. All extra particles are given a null mass, therefore they will not interfere with the simulation. Defaulted to 1.
-		ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, size_t particleCountAlignment = 1);
+		/// @param simulationAlgorithm The simulation algorithm used to calculate the gravitational forces.
+		ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, SimulationAlgorithm simulationAlgorithm);
 		/// @brief Generates a particle system based on the given parameters.
 		/// @param device The Vulkan device to use for Vulkan-specific components.
 		/// @param particleCount The number of particles in the system.
@@ -57,8 +66,8 @@ namespace gsim {
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param simulationSpeed The speed factor at which the simulation is run.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
-		/// @param particleCountAlignment The alignment to use for the particle count when creating the buffer. All extra particles are given a null mass, therefore they will not interfere with the simulation. Defaulted to 1.
-		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, size_t particleCountAlignment = 1);
+		/// @param simulationAlgorithm The simulation algorithm used to calculate the gravitational forces.
+		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, SimulationAlgorithm simulationAlgorithm);
 
 		ParticleSystem& operator=(const ParticleSystem&) = delete;
 		ParticleSystem& operator=(ParticleSystem&&) noexcept = delete;

@@ -1,0 +1,153 @@
+#version 440
+
+// Constants
+layout(constant_id = 0) const uint WORKGROUP_SIZE_TREE = 128;
+layout(constant_id = 1) const uint WORKGROUP_COUNT_TREE = 128;
+layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 64;
+
+layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
+layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
+layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
+
+layout(constant_id = 6) const uint PARTICLE_COUNT = 0;
+
+const float INFINITY = 1.0 / 0.0;
+
+// Particle buffers
+layout(set = 0, binding = 0) buffer ParticlesPosInBuffer {
+	vec2 particlesPosIn[];
+};
+layout(set = 0, binding = 1) buffer ParticlesVelInBuffer {
+	vec2 particlesVelIn[];
+};
+layout(set = 0, binding = 2) buffer ParticlesMassInBuffer {
+	float particlesMassIn[];
+};
+
+layout(set = 1, binding = 0) buffer ParticlesPosOutBuffer {
+	vec2 particlesPosOut[];
+};
+layout(set = 1, binding = 1) buffer ParticlesVelOutBuffer {
+	vec2 particlesVelOut[];
+};
+layout(set = 1, binding = 2) buffer ParticlesMassOutBuffer {
+	float particlesMassOut[];
+};
+
+// Simulation buffers
+layout(set = 2, binding = 0) buffer StateBuffer {
+	vec4 box;
+	vec4 boxes[WORKGROUP_COUNT_TREE];
+	int semaphore;
+} state;
+layout(set = 2, binding = 1) buffer TreeBuffer {
+	ivec4 tree[];
+};
+layout(set = 2, binding = 2) buffer BoxBuffer {
+	vec4 boxes[];
+};
+
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+
+// Shared box buffer
+shared vec4 sharedBoxes[WORKGROUP_SIZE_TREE];
+
+void main() {
+	// Get the thread's local index and group index
+	uint localInd = gl_LocalInvocationID.x;
+	uint groupInd = gl_WorkGroupID.x;
+
+	// Find the bounding box for all particles loaded by this thread
+	float minX = INFINITY, minY = INFINITY;
+	float maxX = -INFINITY, maxY = -INFINITY;
+
+	for(uint i = localInd + groupInd * WORKGROUP_SIZE_TREE; i < PARTICLE_COUNT; i += WORKGROUP_SIZE_TREE * WORKGROUP_COUNT_TREE) {
+		// Load the current particle's position
+		vec2 pos = particlesPosIn[i];
+
+		// Set the box's new info
+		minX = min(minX, pos.x);
+		minY = min(minY, pos.y);
+		maxX = max(maxX, pos.x);
+		maxY = max(maxY, pos.y);
+
+		// Wait for all threads in the group to finish for coalesced access
+		barrier();
+	}
+
+	// Write the bounding box to shared memory
+	sharedBoxes[localInd] = vec4(minX, minY, maxX, maxY);
+	barrier();
+
+	// Apply reduction to get the bounding box for the whole group
+	for(uint inc = 1; inc != WORKGROUP_SIZE_TREE; inc <<= 1) {
+		if((localInd & ((inc << 1) - 1)) == 0) {
+			// Set the new min and max coordinates
+			vec4 box = sharedBoxes[localInd + inc];
+
+			minX = min(minX, box.x);
+			minY = min(minY, box.y);
+			maxX = max(maxX, box.z);
+			maxY = max(maxY, box.w);
+
+			// Write the new box's info to the shared memory
+			sharedBoxes[localInd] = vec4(minX, minY, maxX, maxY);
+		}
+
+		// Wait for all threads to finish the reduction step
+		barrier();
+	}
+
+	// Write the max coordinates of the subgroup and increment the semaphore from the first thread of the subgroup
+	if(localInd == 0) {
+		state.boxes[groupInd] = vec4(minX, minY, maxX, maxY);
+		atomicAdd(state.semaphore, 1);
+	}
+
+	// Exit if not from the first thread group
+	if(groupInd != 0)
+		return;
+	
+	// Wait for all threads to write their bounding boxes to the shared array
+	while(state.semaphore != WORKGROUP_COUNT_TREE);
+	barrier();
+
+	// Load all boxes from the shared array
+	sharedBoxes[localInd] = state.boxes[localInd];
+
+	minX = sharedBoxes[localInd].x;
+	minY = sharedBoxes[localInd].y;
+	maxX = sharedBoxes[localInd].z;
+	maxY = sharedBoxes[localInd].w;
+
+	barrier();
+
+	// Apply reduction to get the bounding box for all particles
+	for(uint inc = 1; inc != WORKGROUP_SIZE_TREE; inc <<= 1) {
+		if((localInd & ((inc << 1) - 1)) == 0) {
+			// Set the new min and max coordinates
+			vec4 box = sharedBoxes[localInd + inc];
+
+			minX = min(minX, box.x);
+			minY = min(minY, box.y);
+			maxX = max(maxX, box.z);
+			maxY = max(maxY, box.w);
+
+			// Write the new box's info to the shared memory
+			sharedBoxes[localInd] = vec4(minX, minY, maxX, maxY);
+		}
+
+		// Wait for all threads to finish the reduction step
+		barrier();
+	}
+
+	if(localInd == 0) {
+		// Increment the max coordinates by 1 for open intervals
+		maxX += 1;
+		maxY += 1;
+
+		// Write the full box to the state buffer and reset the semaphore
+		state.box = vec4(minX, minY, maxX, maxY);
+		state.semaphore = 0;
+	}
+}
