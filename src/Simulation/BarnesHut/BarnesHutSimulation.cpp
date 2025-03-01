@@ -276,17 +276,17 @@ namespace gsim {
 			++ind;
 		}
 
-		descriptorBufferInfos[10].buffer = stateBuffer;
+		descriptorBufferInfos[9].buffer = stateBuffer;
+		descriptorBufferInfos[9].offset = 0;
+		descriptorBufferInfos[9].range = VK_WHOLE_SIZE;
+
+		descriptorBufferInfos[10].buffer = treeBuffer;
 		descriptorBufferInfos[10].offset = 0;
 		descriptorBufferInfos[10].range = VK_WHOLE_SIZE;
 
-		descriptorBufferInfos[11].buffer = treeBuffer;
+		descriptorBufferInfos[11].buffer = boxBuffer;
 		descriptorBufferInfos[11].offset = 0;
 		descriptorBufferInfos[11].range = VK_WHOLE_SIZE;
-
-		descriptorBufferInfos[12].buffer = boxBuffer;
-		descriptorBufferInfos[12].offset = 0;
-		descriptorBufferInfos[12].range = VK_WHOLE_SIZE;
 
 		// Set the descriptor set writes
 		VkWriteDescriptorSet descriptorSetWrites[12];
@@ -325,13 +325,13 @@ namespace gsim {
 	}
 	void BarnesHutSimulation::CreatePipelines() {
 		// Set the pipeline layout info
-		VkDescriptorSetLayout setLayouts[] { particleSetLayout, barnesHutSetLayout };
+		VkDescriptorSetLayout setLayouts[] { particleSetLayout, particleSetLayout, barnesHutSetLayout };
 
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.setLayoutCount = 2,
+			.setLayoutCount = 3,
 			.pSetLayouts = setLayouts,
 			.pushConstantRangeCount = 0,
 			.pPushConstantRanges = nullptr
@@ -430,6 +430,33 @@ namespace gsim {
 		
 		boxPipeline = pipelines[0];
 	}
+	void BarnesHutSimulation::CreateCommandObjects() {
+		// Set the simulation fence create info
+		VkFenceCreateInfo fenceInfo {
+			.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = VK_FENCE_CREATE_SIGNALED_BIT
+		};
+
+		// Create the simulation fence
+		VkResult result = vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &simulationFence);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan simulation synchronization fence! Error code: %s", string_VkResult(result));
+		
+		// Set the command buffer alloc info
+		VkCommandBufferAllocateInfo allocInfo {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+			.pNext = nullptr,
+			.commandPool = device->GetComputeCommandPool(),
+			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			.commandBufferCount = 2
+		};
+
+		// Allocate the command buffers
+		result = vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, commandBuffers);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan simulation command buffers! Error code: %s", string_VkResult(result));
+	}
 
 	// Public functions
 	size_t BarnesHutSimulation::GetRequiredParticleAlignment() {
@@ -442,9 +469,101 @@ namespace gsim {
 		CreateDescriptorPool();
 		CreateShaderModules();
 		CreatePipelines();
+		CreateCommandObjects();
+	}
+
+	void BarnesHutSimulation::RunSimulations(uint32_t simulationCount) {
+		// Set the new command buffer index
+		commandBufferIndex ^= 1;
+		VkCommandBuffer commandBuffer = commandBuffers[commandBufferIndex];
+
+		// Reset the command buffer
+		VkResult result = vkResetCommandBuffer(commandBuffer, 0);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to reset Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
+		
+		// Set the command buffer begin info
+		VkCommandBufferBeginInfo beginInfo {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.pInheritanceInfo = nullptr
+		};
+
+		// Begin recording the command buffer
+		result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to begin recording Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
+
+		// Set the memory barrier info
+		VkMemoryBarrier memoryBarrier {
+			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+			.pNext = nullptr,
+			.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT
+		};
+
+		// Bind the box pipeline
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, boxPipeline);
+
+		// Record every simulation
+		for(uint32_t i = 0; i != simulationCount; ++i) {
+			// Bind the descriptor sets
+			VkDescriptorSet commandSets[] { descriptorSets[particleSystem->GetComputeInputIndex()], descriptorSets[particleSystem->GetComputeOutputIndex()], descriptorSets[3] };
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 3, commandSets, 0, nullptr);
+
+			// Run the shader
+			vkCmdDispatch(commandBuffer, WORKGROUP_COUNT_TREE, 1, 1);
+
+			// Add a pipeline barrier
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+
+			// Get the new indices
+			particleSystem->NextComputeIndices();
+		}
+
+		// End recording the command buffer
+		result = vkEndCommandBuffer(commandBuffer);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to end recording Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
+
+		// Wait for the simulation fence
+		result = vkWaitForFences(device->GetDevice(), 1, &simulationFence, VK_TRUE, UINT64_MAX);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to wait for Vulkan simulation fence! Error code: %s", string_VkResult(result));
+		
+		// Reset the simulation fence
+		result = vkResetFences(device->GetDevice(), 1, &simulationFence);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to reset Vulkan simulation fence! Error code: %s", string_VkResult(result));
+
+		// Set the submit info
+		VkSubmitInfo submitInfo {
+			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			.pNext = nullptr,
+			.waitSemaphoreCount = 0,
+			.pWaitSemaphores = nullptr,
+			.pWaitDstStageMask = nullptr,
+			.commandBufferCount = 1,
+			.pCommandBuffers = commandBuffers + commandBufferIndex,
+			.signalSemaphoreCount = 0,
+			.pSignalSemaphores = nullptr
+		};
+
+		// Submit the command buffer to the compute queue
+		result = vkQueueSubmit(device->GetComputeQueue(), 1, &submitInfo, simulationFence);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to submit Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
 	}
 
 	BarnesHutSimulation::~BarnesHutSimulation() {
+		// Wait for the simulation fence
+		vkWaitForFences(device->GetDevice(), 1, &simulationFence, VK_TRUE, UINT64_MAX);
+
+		// Destroy the command objects
+		vkFreeCommandBuffers(device->GetDevice(), device->GetComputeCommandPool(), 2, commandBuffers);
+		vkDestroyFence(device->GetDevice(), simulationFence, nullptr);
+
 		// Destroy all pipelines and the pipeline layout
 		vkDestroyPipeline(device->GetDevice(), boxPipeline, nullptr);
 
@@ -462,6 +581,7 @@ namespace gsim {
 		vkDestroyBuffer(device->GetDevice(), stateBuffer, nullptr);
 		vkDestroyBuffer(device->GetDevice(), treeBuffer, nullptr);
 		vkDestroyBuffer(device->GetDevice(), boxBuffer, nullptr);
+
 		vkFreeMemory(device->GetDevice(), bufferMemory, nullptr);
 	}
 }

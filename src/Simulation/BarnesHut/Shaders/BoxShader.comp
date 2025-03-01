@@ -35,7 +35,7 @@ layout(set = 1, binding = 2) buffer ParticlesMassOutBuffer {
 };
 
 // Simulation buffers
-layout(set = 2, binding = 0) buffer StateBuffer {
+layout(set = 2, binding = 0) coherent volatile buffer StateBuffer {
 	vec4 box;
 	vec4 boxes[WORKGROUP_COUNT_TREE];
 	int semaphore;

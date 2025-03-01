@@ -5,6 +5,7 @@
 #include "Particles/Particle.hpp"
 #include "Particles/ParticleSystem.hpp"
 #include "Platform/Window.hpp"
+#include "Simulation/BarnesHut/BarnesHutSimulation.hpp"
 #include "Simulation/Direct/DirectSimulation.hpp"
 #include "Vulkan/VulkanDevice.hpp"
 #include "Vulkan/VulkanInstance.hpp"
@@ -73,7 +74,9 @@ struct ProgramInfo {
 	gsim::VulkanSwapChain* swapChain;
 	gsim::ParticleSystem* particleSystem;
 	gsim::GraphicsPipeline* graphicsPipeline;
-	gsim::DirectSimulation* simulation;
+
+	gsim::DirectSimulation* directSim = nullptr;
+	gsim::BarnesHutSimulation* barnesHutSim = nullptr;
 
 	gsim::Vec2 cameraPos;
 	float cameraSize;
@@ -90,7 +93,11 @@ static void WindowDrawCallback(void* userData, void* args) {
 	ProgramInfo* programInfo = (ProgramInfo*)userData;
 
 	// Run the simulations
-	programInfo->simulation->RunSimulations(programInfo->targetSimulationCount - programInfo->simulationCount);
+	if(programInfo->directSim) {
+		programInfo->directSim->RunSimulations(programInfo->targetSimulationCount - programInfo->simulationCount);
+	} else {
+		programInfo->barnesHutSim->RunSimulations(programInfo->targetSimulationCount - programInfo->simulationCount);
+	}
 	programInfo->simulationCount = programInfo->targetSimulationCount;
 
 	// Close the window and exit the function if all required simulations were run
@@ -244,7 +251,11 @@ int main(int argc, char** args) {
 			}
 
 			// Create the simulation
-			programInfo.simulation = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
+			if(programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
+				programInfo.directSim = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
+			} else {
+				programInfo.barnesHutSim = new gsim::BarnesHutSimulation(programInfo.device, programInfo.particleSystem);
+			}
 
 			// Store the clock start, for benchmarking
 			programInfo.clockStart = clock();
@@ -254,7 +265,11 @@ int main(int argc, char** args) {
 			// Run all the simulations
 			while(programInfo.simulationCount != programInfo.maxSimulationCount) {
 				// Run the simulations
-				programInfo.simulation->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+				if(programInfo.directSim) {
+					programInfo.directSim->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+				} else {
+					programInfo.barnesHutSim->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+				}
 				programInfo.simulationCount = programInfo.targetSimulationCount;
 
 				// Set the target simulation count
@@ -288,7 +303,11 @@ int main(int argc, char** args) {
 			}
 
 			// Destroy the simulation
-			delete programInfo.simulation;
+			if(programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
+				delete programInfo.directSim;
+			} else {
+				delete programInfo.barnesHutSim;
+			}
 
 			// Save the particle infos, if an output file was provided
 			if(programInfo.particlesOutFile)
@@ -327,7 +346,12 @@ int main(int argc, char** args) {
 
 			// Create the pipelines
 			programInfo.graphicsPipeline = new gsim::GraphicsPipeline(programInfo.device, programInfo.swapChain, programInfo.particleSystem);
-			programInfo.simulation = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
+
+			if(programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
+				programInfo.directSim = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
+			} else {
+				programInfo.barnesHutSim = new gsim::BarnesHutSimulation(programInfo.device, programInfo.particleSystem);
+			}
 
 			// Add the event listeners
 			programInfo.window->GetDrawEvent().AddListener({ WindowDrawCallback, &programInfo });
@@ -342,7 +366,11 @@ int main(int argc, char** args) {
 				programInfo.window->ParseEvents();
 
 				// Run the simulations
-				programInfo.simulation->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+				if(programInfo.directSim) {
+					programInfo.directSim->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+				} else {
+					programInfo.barnesHutSim->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+				}
 				programInfo.simulationCount = programInfo.targetSimulationCount;
 
 				// Close the window and exit the loop if all required simulations were run
@@ -359,7 +387,12 @@ int main(int argc, char** args) {
 
 			// Destroy the pipelines
 			delete programInfo.graphicsPipeline;
-			delete programInfo.simulation;
+			
+			if(programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
+				delete programInfo.directSim;
+			} else {
+				delete programInfo.barnesHutSim;
+			}
 
 			// Save the particle infos, if an output file was provided
 			if(programInfo.particlesOutFile)

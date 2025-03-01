@@ -47,6 +47,10 @@ namespace gsim {
 			return particleSystem;
 		}
 
+		/// @brief Runs the given number of simulations.
+		/// @param simulationCount The number of simulations to run.
+		void RunSimulations(uint32_t simulationCount);
+
 		/// @brief Destroys the Barnes-Hut simulation.
 		~BarnesHutSimulation();
 	private:
@@ -54,6 +58,7 @@ namespace gsim {
 		void CreateDescriptorPool();
 		void CreateShaderModules();
 		void CreatePipelines();
+		void CreateCommandObjects();
 
 		VulkanDevice* device;
 		ParticleSystem* particleSystem;
@@ -72,5 +77,9 @@ namespace gsim {
 
 		VkPipelineLayout pipelineLayout;
 		VkPipeline boxPipeline;
+
+		VkFence simulationFence;
+		VkCommandBuffer commandBuffers[2];
+		uint32_t commandBufferIndex = 0;
 	};
 }
