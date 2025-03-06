@@ -14,7 +14,9 @@ namespace gsim {
 	struct GSIM_ALIGNAS(sizeof(Vec2)) SimulationState {
 		Vec4 box;
 		Vec4 boxes[WORKGROUP_COUNT_TREE];
-		int32_t semaphore;
+
+		uint32_t semaphore;
+		uint32_t treeTop;
 	};
 	struct SpecializationConstants {
 		uint32_t workgroupSizeTree;
@@ -26,6 +28,7 @@ namespace gsim {
 		float softeningLenSqr;
 
 		uint32_t particleCount;
+		uint32_t bufferSize;
 	};
 
 	// Shader sources
@@ -44,7 +47,7 @@ namespace gsim {
 			.pNext = nullptr,
 			.flags = 0,
 			.size = sizeof(SimulationState),
-			.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+			.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 1,
 			.pQueueFamilyIndices = &computeIndex
@@ -389,12 +392,17 @@ namespace gsim {
 				.constantID = 6,
 				.offset = offsetof(SpecializationConstants, particleCount),
 				.size = sizeof(uint32_t)
+			},
+			{
+				.constantID = 7,
+				.offset = offsetof(SpecializationConstants, bufferSize),
+				.size = sizeof(uint32_t)
 			}
 		};
 
 		// Set the specialization info
 		VkSpecializationInfo specializationInfo {
-			.mapEntryCount = 7,
+			.mapEntryCount = 8,
 			.pMapEntries = specializationEntries,
 			.dataSize = sizeof(SpecializationConstants),
 			.pData = &specializationConst

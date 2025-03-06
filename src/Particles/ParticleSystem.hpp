@@ -93,6 +93,11 @@ namespace gsim {
 		size_t GetAlignedParticleCount() const {
 			return alignedParticleCount;
 		}
+		/// @brief Gets the number of particles that the particle buffers have room for. Larger for Barnes-Hut simulations.
+		/// @return The number of particles that the particle buffers have room for.
+		size_t GetBufferSize() const {
+			return bufferSize;
+		}
 		/// @brief Gets the gravitational constant used for the simulation.
 		/// @return The gravitational constant used for the simulation.
 		float GetGravitationalConst() const {
@@ -187,6 +192,7 @@ namespace gsim {
 
 		size_t particleCount;
 		size_t alignedParticleCount;
+		size_t bufferSize;
 		float gravitationalConst;
 		float simulationTime;
 		float simulationSpeed;

@@ -10,6 +10,7 @@ layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
 layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
 
 layout(constant_id = 6) const uint PARTICLE_COUNT = 0;
+layout(constant_id = 7) const uint BUFFER_SIZE = 0;
 
 const float INFINITY = 1.0 / 0.0;
 
@@ -38,12 +39,14 @@ layout(set = 1, binding = 2) buffer ParticlesMassOutBuffer {
 layout(set = 2, binding = 0) coherent volatile buffer StateBuffer {
 	vec4 box;
 	vec4 boxes[WORKGROUP_COUNT_TREE];
-	int semaphore;
+
+	uint semaphore;
+	uint treeTop;
 } state;
-layout(set = 2, binding = 1) buffer TreeBuffer {
+layout(set = 2, binding = 1) coherent volatile buffer TreeBuffer {
 	ivec4 tree[];
 };
-layout(set = 2, binding = 2) buffer BoxBuffer {
+layout(set = 2, binding = 2) coherent volatile buffer BoxBuffer {
 	vec4 boxes[];
 };
 
@@ -149,5 +152,10 @@ void main() {
 		// Write the full box to the state buffer and reset the semaphore
 		state.box = vec4(minX, minY, maxX, maxY);
 		state.semaphore = 0;
+
+		// Configure the tree root
+		tree[BUFFER_SIZE - 1] = ivec4(-1);
+		boxes[BUFFER_SIZE - 1] = vec4(minX, minY, maxX, maxY);
+		state.treeTop = BUFFER_SIZE - 2;
 	}
 }
