@@ -11,6 +11,14 @@
 
 namespace gsim {
 	// Internal helper functions
+	float RandomFloat() {
+		int32_t val1 = rand(), val2 = rand();
+		int32_t val = val1 * (RAND_MAX + 1) + val2;
+		int32_t max = RAND_MAX * (RAND_MAX + 2);
+
+		return (float)val / max;
+	}
+
 	void ParticleSystem::GenerateParticlesRandom(Particle* particles, float generateSize, float minMass, float maxMass) {
 		// Set the random seed
 		srand(time(nullptr));
@@ -18,8 +26,8 @@ namespace gsim {
 		// Generate every particle
 		for(size_t i = 0; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar
-			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
-			float r = sqrt((float)rand() / RAND_MAX) * generateSize;
+			float theta = RandomFloat() * 2 * M_PI;
+			float r = sqrt(RandomFloat()) * generateSize;
 
 			// Convert the polar coordinates to cartesian
 			particles[i].pos = { r * cosf(theta), r * sinf(theta) };
@@ -42,9 +50,8 @@ namespace gsim {
 		// Generate every particle
 		for(size_t i = 0; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar
-			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
-			float rNorm = (float)rand() / RAND_MAX;
-			float r = rNorm * generateSize;
+			float theta = RandomFloat() * 2 * M_PI;
+			float r = RandomFloat() * generateSize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -56,7 +63,7 @@ namespace gsim {
 			particles[i].vel = { -thetaSin * r * vel, thetaCos * r * vel };
 
 			// Generate the particle's mass
-			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
+			particles[i].mass = RandomFloat() * (maxMass - minMass) + minMass;
 		}
 	}
 	void ParticleSystem::GenerateParticlesGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass) {
@@ -71,9 +78,8 @@ namespace gsim {
 		// Generate every particle in the first galaxy
 		for(size_t i = 0; i != particleCount >> 1; ++i) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
-			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
-			float rNorm = (float)rand() / RAND_MAX;
-			float r = rNorm * galaxySize;
+			float theta = RandomFloat() * 2 * M_PI;
+			float r = RandomFloat() * galaxySize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -85,15 +91,14 @@ namespace gsim {
 			particles[i].vel = { -thetaSin * r * vel + galaxySize * 0.1f, thetaCos * r * vel };
 
 			// Generate the particle's mass
-			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
+			particles[i].mass = RandomFloat() * (maxMass - minMass) + minMass;
 		}
 
 		// Generate avery particle in the second galaxy
 		for(size_t i = particleCount >> 1; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
-			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
-			float rNorm = (float)rand() / RAND_MAX;
-			float r = rNorm * galaxySize;
+			float theta = RandomFloat() * 2 * M_PI;
+			float r = RandomFloat() * galaxySize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -105,7 +110,7 @@ namespace gsim {
 			particles[i].vel = { -thetaSin * r * vel - galaxySize * 0.1f, thetaCos * r * vel };
 
 			// Generate the particle's mass
-			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
+			particles[i].mass = RandomFloat() * (maxMass - minMass) + minMass;
 		}
 	}
 	void ParticleSystem::GenerateParticlesSymmetricalGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass) {
@@ -120,9 +125,8 @@ namespace gsim {
 		// Generate every particle in the first galaxy and mirror it in the second
 		for(size_t i = 0; i != particleCount; i += 2) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
-			float theta = ((float)rand() / RAND_MAX) * 2 * M_PI;
-			float rNorm = (float)rand() / RAND_MAX;
-			float r = rNorm * galaxySize;
+			float theta = RandomFloat() * 2 * M_PI;
+			float r = RandomFloat() * galaxySize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -134,7 +138,7 @@ namespace gsim {
 			particles[i].vel = { -thetaSin * r * vel + galaxySize * 0.1f, thetaCos * r * vel };
 
 			// Generate the particle's mass
-			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
+			particles[i].mass = RandomFloat() * (maxMass - minMass) + minMass;
 
 			// Mirror the particle from the first galaxy in the second
 			particles[i + 1].pos = { -particles[i].pos.x, particles[i].pos.y };
