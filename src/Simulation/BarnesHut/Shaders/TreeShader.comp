@@ -15,38 +15,38 @@ layout(constant_id = 7) const int BUFFER_SIZE = 0;
 const uint STRIDE = WORKGROUP_SIZE_TREE * WORKGROUP_COUNT_TREE;
 
 // Particle buffers
-layout(set = 0, binding = 0) buffer ParticlesPosInBuffer {
+layout(set = 0, binding = 0) coherent buffer ParticlesPosInBuffer {
 	vec2 particlesPosIn[];
 };
-layout(set = 0, binding = 1) buffer ParticlesVelInBuffer {
+layout(set = 0, binding = 1) coherent buffer ParticlesVelInBuffer {
 	vec2 particlesVelIn[];
 };
-layout(set = 0, binding = 2) buffer ParticlesMassInBuffer {
+layout(set = 0, binding = 2) coherent buffer ParticlesMassInBuffer {
 	float particlesMassIn[];
 };
 
-layout(set = 1, binding = 0) buffer ParticlesPosOutBuffer {
+layout(set = 1, binding = 0) coherent buffer ParticlesPosOutBuffer {
 	vec2 particlesPosOut[];
 };
-layout(set = 1, binding = 1) buffer ParticlesVelOutBuffer {
+layout(set = 1, binding = 1) coherent buffer ParticlesVelOutBuffer {
 	vec2 particlesVelOut[];
 };
-layout(set = 1, binding = 2) buffer ParticlesMassOutBuffer {
+layout(set = 1, binding = 2) coherent buffer ParticlesMassOutBuffer {
 	float particlesMassOut[];
 };
 
 // Simulation buffers
-layout(set = 2, binding = 0) coherent volatile buffer StateBuffer {
+layout(set = 2, binding = 0) coherent buffer StateBuffer {
 	vec4 box;
 	vec4 boxes[WORKGROUP_COUNT_TREE];
 
 	int semaphore;
 	int treeTop;
 } state;
-layout(set = 2, binding = 1) coherent volatile buffer TreeBuffer {
+layout(set = 2, binding = 1) coherent buffer TreeBuffer {
 	ivec4 tree[];
 };
-layout(set = 2, binding = 2) coherent volatile buffer BoxBuffer {
+layout(set = 2, binding = 2) coherent buffer BoxBuffer {
 	vec4 boxes[];
 };
 
@@ -117,6 +117,7 @@ void main() {
 					nextInd = atomicAdd(state.treeTop, -1);
 					box = GetChildBox(box, childInd);
 					boxes[nextInd] = box;
+					particlesMassIn[nextInd] = -1;
 
 					// Get the child indices
 					childInd = GetPosIndex(box, pos);
@@ -130,6 +131,7 @@ void main() {
 						int newInd = atomicAdd(state.treeTop, -1);
 						box = GetChildBox(box, childInd);
 						boxes[newInd] = box;
+						particlesMassIn[newInd] = -1;
 						
 						// Set the previous node's children
 						ivec4 children = ivec4(-1);

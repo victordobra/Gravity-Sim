@@ -76,10 +76,12 @@ namespace gsim {
 
 		VkShaderModule boxShader;
 		VkShaderModule treeShader;
+		VkShaderModule centerShader;
 
 		VkPipelineLayout pipelineLayout;
 		VkPipeline boxPipeline;
 		VkPipeline treePipeline;
+		VkPipeline centerPipeline;
 
 		VkFence simulationFence;
 		VkCommandBuffer commandBuffers[2];

@@ -13,25 +13,26 @@ layout(constant_id = 6) const int PARTICLE_COUNT = 0;
 layout(constant_id = 7) const int BUFFER_SIZE = 0;
 
 const float INFINITY = 1.0 / 0.0;
+const uint STRIDE = WORKGROUP_SIZE_TREE * WORKGROUP_COUNT_TREE;
 
 // Particle buffers
-layout(set = 0, binding = 0) buffer ParticlesPosInBuffer {
+layout(set = 0, binding = 0) coherent buffer ParticlesPosInBuffer {
 	vec2 particlesPosIn[];
 };
-layout(set = 0, binding = 1) buffer ParticlesVelInBuffer {
+layout(set = 0, binding = 1) coherent buffer ParticlesVelInBuffer {
 	vec2 particlesVelIn[];
 };
-layout(set = 0, binding = 2) buffer ParticlesMassInBuffer {
+layout(set = 0, binding = 2) coherent buffer ParticlesMassInBuffer {
 	float particlesMassIn[];
 };
 
-layout(set = 1, binding = 0) buffer ParticlesPosOutBuffer {
+layout(set = 1, binding = 0) coherent buffer ParticlesPosOutBuffer {
 	vec2 particlesPosOut[];
 };
-layout(set = 1, binding = 1) buffer ParticlesVelOutBuffer {
+layout(set = 1, binding = 1) coherent buffer ParticlesVelOutBuffer {
 	vec2 particlesVelOut[];
 };
-layout(set = 1, binding = 2) buffer ParticlesMassOutBuffer {
+layout(set = 1, binding = 2) coherent buffer ParticlesMassOutBuffer {
 	float particlesMassOut[];
 };
 
@@ -64,7 +65,7 @@ void main() {
 	float minX = INFINITY, minY = INFINITY;
 	float maxX = -INFINITY, maxY = -INFINITY;
 
-	for(uint i = localInd + groupInd * WORKGROUP_SIZE_TREE; i < PARTICLE_COUNT; i += WORKGROUP_SIZE_TREE * WORKGROUP_COUNT_TREE) {
+	for(uint i = localInd + groupInd * WORKGROUP_SIZE_TREE; i < PARTICLE_COUNT; i += STRIDE) {
 		// Load the current particle's position
 		vec2 pos = particlesPosIn[i];
 

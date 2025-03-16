@@ -1,0 +1,127 @@
+#version 440
+
+// Constants
+layout(constant_id = 0) const uint WORKGROUP_SIZE_TREE = 128;
+layout(constant_id = 1) const uint WORKGROUP_COUNT_TREE = 128;
+layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 64;
+
+layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
+layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
+layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
+
+layout(constant_id = 6) const int PARTICLE_COUNT = 0;
+layout(constant_id = 7) const int BUFFER_SIZE = 0;
+
+const uint STRIDE = WORKGROUP_SIZE_TREE * WORKGROUP_COUNT_TREE;
+
+// Particle buffers
+layout(set = 0, binding = 0) coherent buffer ParticlesPosInBuffer {
+	vec2 particlesPosIn[];
+};
+layout(set = 0, binding = 1) coherent buffer ParticlesVelInBuffer {
+	vec2 particlesVelIn[];
+};
+layout(set = 0, binding = 2) coherent buffer ParticlesMassInBuffer {
+	float particlesMassIn[];
+};
+
+layout(set = 1, binding = 0) coherent buffer ParticlesPosOutBuffer {
+	vec2 particlesPosOut[];
+};
+layout(set = 1, binding = 1) coherent buffer ParticlesVelOutBuffer {
+	vec2 particlesVelOut[];
+};
+layout(set = 1, binding = 2) coherent buffer ParticlesMassOutBuffer {
+	float particlesMassOut[];
+};
+
+// Simulation buffers
+layout(set = 2, binding = 0) coherent buffer StateBuffer {
+	vec4 box;
+	vec4 boxes[WORKGROUP_COUNT_TREE];
+
+	int semaphore;
+	int treeTop;
+} state;
+layout(set = 2, binding = 1) coherent buffer TreeBuffer {
+	ivec4 tree[];
+};
+layout(set = 2, binding = 2) coherent buffer BoxBuffer {
+	vec4 boxes[];
+};
+
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+	// Get the particle's starting index
+	int startInd = state.treeTop & ~(int(WORKGROUP_COUNT_TREE) - 1);
+	int nodeInd = startInd + int(gl_GlobalInvocationID.x);
+
+	int pending[4], pendingCount = 0;
+	vec2 centerPos; float centerMass;
+
+	while(nodeInd < BUFFER_SIZE) {
+		// Check if the shader moved on to another particle
+		if(pendingCount == 0) {
+			// Reset the center of gravity's info
+			centerPos = vec2(0);
+			centerMass = 0;
+
+			// Iterate over the node's children
+			ivec4 children = tree[nodeInd];
+			for(int i = 0; i != 4; ++i) {
+				// Skip the current child if nonexistent
+				if(children[i] == -1)
+					continue;
+
+				// Load the particle's mass
+				float mass = particlesMassIn[children[i]];
+
+				if(mass < 0) {
+					// Add the particle to the pending stack
+					pending[pendingCount++] = children[i];
+				} else {
+					// Load the particle's position
+					vec2 pos = particlesPosIn[children[i]];
+
+					// Add the particle's contribution to the center of gravity
+					centerPos += pos * mass;
+					centerMass += mass;
+				}
+			}
+		}
+		if(pendingCount != 0) {
+			// Loop as long as a new child is ready
+			bool readyChild = true;
+			while(readyChild && pendingCount != 0) {
+				// Load the last child's mass
+				float mass = particlesMassIn[pending[pendingCount - 1]];
+
+				// Check if the child is ready
+				readyChild = mass > 0;
+				if(readyChild) {
+					// Load the particle's position
+					vec2 pos = particlesPosIn[pending[pendingCount - 1]];
+
+					// Add the particle's contribution to the center of gravity
+					centerPos += pos * mass;
+					centerMass += mass;
+
+					// Remove the child from the stack
+					--pendingCount;
+				}
+			}
+		}
+		if(pendingCount == 0) {
+			if(centerMass > 0) {
+				// Store the center of gravity's info
+				particlesPosIn[nodeInd] = centerPos / centerMass;
+				memoryBarrier();
+				particlesMassIn[nodeInd] = centerMass;
+			}
+
+			// Update the node index
+			nodeInd += int(STRIDE);
+		}
+	}
+}
