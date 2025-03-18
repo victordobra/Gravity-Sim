@@ -59,7 +59,6 @@ namespace gsim {
 		void CreateShaderModules();
 		void CreatePipelines();
 		void CreateCommandObjects();
-		void ClearBuffers();
 
 		VulkanDevice* device;
 		ParticleSystem* particleSystem;
@@ -67,6 +66,7 @@ namespace gsim {
 		VkBuffer stateBuffer;
 		VkBuffer treeBuffer;
 		VkBuffer boxBuffer;
+		VkBuffer intBuffer;
 		VkDeviceMemory bufferMemory;
 
 		VkDescriptorSetLayout particleSetLayout;

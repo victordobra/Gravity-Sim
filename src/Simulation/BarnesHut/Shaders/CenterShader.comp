@@ -49,6 +49,9 @@ layout(set = 2, binding = 1) coherent buffer TreeBuffer {
 layout(set = 2, binding = 2) coherent buffer BoxBuffer {
 	vec4 boxes[];
 };
+layout(set = 2, binding = 3) coherent buffer IntBuffer {
+	ivec2 ints[];
+};
 
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
@@ -58,14 +61,15 @@ void main() {
 	int nodeInd = startInd + int(gl_GlobalInvocationID.x);
 
 	int pending[4], pendingCount = 0;
-	vec2 centerPos; float centerMass;
-
+	vec2 centerPos; float centerMass; int centerCount;
+	
 	while(nodeInd < BUFFER_SIZE) {
 		// Check if the shader moved on to another particle
 		if(pendingCount == 0) {
 			// Reset the center of gravity's info
 			centerPos = vec2(0);
 			centerMass = 0;
+			centerCount = 0;
 
 			// Iterate over the node's children
 			ivec4 children = tree[nodeInd];
@@ -84,9 +88,19 @@ void main() {
 					// Load the particle's position
 					vec2 pos = particlesPosIn[children[i]];
 
+					// Load or set the particle's child count
+					int count;
+					if(children[i] < PARTICLE_COUNT) {
+						count = 1;
+						ints[children[i]][1] = count;
+					} else {
+						count = ints[children[i]][1];
+					}
+
 					// Add the particle's contribution to the center of gravity
 					centerPos += pos * mass;
 					centerMass += mass;
+					centerCount += count;
 				}
 			}
 		}
@@ -100,12 +114,14 @@ void main() {
 				// Check if the child is ready
 				readyChild = mass > 0;
 				if(readyChild) {
-					// Load the particle's position
+					// Load the particle's position and child count
 					vec2 pos = particlesPosIn[pending[pendingCount - 1]];
+					int count = ints[pending[pendingCount - 1]][1];
 
 					// Add the particle's contribution to the center of gravity
 					centerPos += pos * mass;
 					centerMass += mass;
+					centerCount += count;
 
 					// Remove the child from the stack
 					--pendingCount;
@@ -116,6 +132,7 @@ void main() {
 			if(centerMass > 0) {
 				// Store the center of gravity's info
 				particlesPosIn[nodeInd] = centerPos / centerMass;
+				ints[nodeInd][1] = centerCount;
 				memoryBarrier();
 				particlesMassIn[nodeInd] = centerMass;
 			}

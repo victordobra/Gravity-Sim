@@ -50,6 +50,9 @@ layout(set = 2, binding = 1) coherent buffer TreeBuffer {
 layout(set = 2, binding = 2) coherent buffer BoxBuffer {
 	vec4 boxes[];
 };
+layout(set = 2, binding = 3) coherent buffer IntBuffer {
+	ivec2 ints[];
+};
 
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
