@@ -161,6 +161,7 @@ void main() {
 		// Configure the tree root
 		tree[BUFFER_SIZE - 1] = ivec4(-1);
 		boxes[BUFFER_SIZE - 1] = vec4(minX, minY, maxX, maxY);
+		ints[BUFFER_SIZE - 1] = ivec2(0);
 		state.treeTop = BUFFER_SIZE - 2;
 	}
 }

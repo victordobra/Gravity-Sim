@@ -59,6 +59,7 @@ namespace gsim {
 		void CreateShaderModules();
 		void CreatePipelines();
 		void CreateCommandObjects();
+		void ClearBuffers();
 
 		VulkanDevice* device;
 		ParticleSystem* particleSystem;
@@ -77,11 +78,13 @@ namespace gsim {
 		VkShaderModule boxShader;
 		VkShaderModule treeShader;
 		VkShaderModule centerShader;
+		VkShaderModule sortShader;
 
 		VkPipelineLayout pipelineLayout;
 		VkPipeline boxPipeline;
 		VkPipeline treePipeline;
 		VkPipeline centerPipeline;
+		VkPipeline sortPipeline;
 
 		VkFence simulationFence;
 		VkCommandBuffer commandBuffers[2];

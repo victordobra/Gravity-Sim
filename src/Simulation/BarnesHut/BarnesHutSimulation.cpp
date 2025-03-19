@@ -41,6 +41,9 @@ namespace gsim {
 	const uint32_t CENTER_SHADER_SOURCE[] {
 #include "Shaders/CenterShader.comp.u32"
 	};
+	const uint32_t SORT_SHADER_SOURCE[] {
+#include "Shaders/SortShader.comp.u32"
+	};
 
 	// Internal helper functions
 	void BarnesHutSimulation::CreateBuffers() {
@@ -409,6 +412,19 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut center shader module! Error code: %s", string_VkResult(result));
 		
+		// Set the sort shader module info
+		VkShaderModuleCreateInfo sortShaderInfo {
+			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.codeSize = sizeof(SORT_SHADER_SOURCE),
+			.pCode = SORT_SHADER_SOURCE
+		};
+
+		// Create the sort shader module
+		result = vkCreateShaderModule(device->GetDevice(), &sortShaderInfo, nullptr, &sortShader);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut sort shader module! Error code: %s", string_VkResult(result));
 	}
 	void BarnesHutSimulation::CreatePipelines() {
 		// Set the pipeline layout info
@@ -545,26 +561,44 @@ namespace gsim {
 				.layout = pipelineLayout,
 				.basePipelineHandle = VK_NULL_HANDLE,
 				.basePipelineIndex = -1
+			},
+			{
+				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = 0,
+				.stage = {
+					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+					.pNext = nullptr,
+					.flags = 0,
+					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
+					.module = sortShader,
+					.pName = "main",
+					.pSpecializationInfo = &specializationInfo
+				},
+				.layout = pipelineLayout,
+				.basePipelineHandle = VK_NULL_HANDLE,
+				.basePipelineIndex = -1
 			}
 		};
 
 		// Create the pipelines
-		VkPipeline pipelines[3];
+		VkPipeline pipelines[4];
 
-		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 3, pipelineInfos, nullptr, pipelines);
+		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 4, pipelineInfos, nullptr, pipelines);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut compute pipelines! Error code: %s", string_VkResult(result));
 		
 		boxPipeline = pipelines[0];
 		treePipeline = pipelines[1];
 		centerPipeline = pipelines[2];
+		sortPipeline = pipelines[3];
 	}
 	void BarnesHutSimulation::CreateCommandObjects() {
 		// Set the simulation fence create info
 		VkFenceCreateInfo fenceInfo {
 			.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 			.pNext = nullptr,
-			.flags = VK_FENCE_CREATE_SIGNALED_BIT
+			.flags = 0
 		};
 
 		// Create the simulation fence
@@ -586,6 +620,54 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan simulation command buffers! Error code: %s", string_VkResult(result));
 	}
+	void BarnesHutSimulation::ClearBuffers() {
+		// Set the command buffer begin info
+		VkCommandBufferBeginInfo beginInfo {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.pInheritanceInfo = nullptr
+		};
+
+		// Begin recording the command buffer
+		VkResult result = vkBeginCommandBuffer(commandBuffers[0], &beginInfo);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to begin recording Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
+		
+		// Clear the buffers
+		vkCmdFillBuffer(commandBuffers[0], stateBuffer, 0, VK_WHOLE_SIZE, 0);
+		vkCmdFillBuffer(commandBuffers[0], treeBuffer, 0, VK_WHOLE_SIZE, (uint32_t)-1);
+		vkCmdFillBuffer(commandBuffers[0], boxBuffer, 0, VK_WHOLE_SIZE, 0);
+		vkCmdFillBuffer(commandBuffers[0], intBuffer, 0, VK_WHOLE_SIZE, (uint32_t)-1);
+
+		// End recording the command buffer
+		result = vkEndCommandBuffer(commandBuffers[0]);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to end recording Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
+
+		// Set the submit info
+		VkSubmitInfo submitInfo {
+			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			.pNext = nullptr,
+			.waitSemaphoreCount = 0,
+			.pWaitSemaphores = nullptr,
+			.pWaitDstStageMask = nullptr,
+			.commandBufferCount = 1,
+			.pCommandBuffers = commandBuffers,
+			.signalSemaphoreCount = 0,
+			.pSignalSemaphores = nullptr
+		};
+
+		// Submit the command buffer to the compute queue
+		result = vkQueueSubmit(device->GetComputeQueue(), 1, &submitInfo, simulationFence);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to submit Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
+
+		// Wait for the clear to finish
+		result = vkWaitForFences(device->GetDevice(), 1, &simulationFence, VK_TRUE, UINT64_MAX);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to wait for Vulkan simulation fence! Error code: %s", string_VkResult(result));
+	}
 
 	// Public functions
 	size_t BarnesHutSimulation::GetRequiredParticleAlignment() {
@@ -599,6 +681,7 @@ namespace gsim {
 		CreateShaderModules();
 		CreatePipelines();
 		CreateCommandObjects();
+		ClearBuffers();
 	}
 
 	void BarnesHutSimulation::RunSimulations(uint32_t simulationCount) {
@@ -628,57 +711,47 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to begin recording Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
 
-		// Set the clear memory barrier info		
-		VkMemoryBarrier clearMemoryBarrier {
-			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
-			.pNext = nullptr,
-			.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT
-		};
-
-		// Set the shader memory barrier info
-		VkMemoryBarrier shaderMemoryBarrier {
+		// Set the memory barrier info
+		VkMemoryBarrier memoryBarrier {
 			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
 			.pNext = nullptr,
 			.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
 			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT
 		};
 
-		// Bind the descriptor sets
-		VkDescriptorSet commandSets[] { descriptorSets[particleSystem->GetComputeInputIndex()], descriptorSets[particleSystem->GetComputeOutputIndex()], descriptorSets[3] };
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 3, commandSets, 0, nullptr);
-
 		// Record every simulation
 		for(uint32_t i = 0; i != simulationCount; ++i) {
-			// Clear all buffers
-			vkCmdFillBuffer(commandBuffer, stateBuffer, 0, VK_WHOLE_SIZE, 0);
-			vkCmdFillBuffer(commandBuffer, treeBuffer, 0, VK_WHOLE_SIZE, (uint32_t)-1);
-			vkCmdFillBuffer(commandBuffer, boxBuffer, 0, VK_WHOLE_SIZE, 0);
-			vkCmdFillBuffer(commandBuffer, intBuffer, 0, VK_WHOLE_SIZE, 0);
-
-			// Add a pipeline barrier
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &clearMemoryBarrier, 0, nullptr, 0, nullptr);
+			// Bind the descriptor sets
+			VkDescriptorSet commandSets[] { descriptorSets[particleSystem->GetComputeInputIndex()], descriptorSets[particleSystem->GetComputeOutputIndex()], descriptorSets[3] };
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 3, commandSets, 0, nullptr);
 
 			// Run the box shader
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, boxPipeline);
 			vkCmdDispatch(commandBuffer, WORKGROUP_COUNT_TREE, 1, 1);
 
 			// Add a pipeline barrier
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &shaderMemoryBarrier, 0, nullptr, 0, nullptr);
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
 			// Run the tree shader
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, treePipeline);
 			vkCmdDispatch(commandBuffer, WORKGROUP_COUNT_TREE, 1, 1);
 
 			// Add a pipeline barrier
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &shaderMemoryBarrier, 0, nullptr, 0, nullptr);
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
 			// Run the center shader
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, centerPipeline);
 			vkCmdDispatch(commandBuffer, WORKGROUP_COUNT_TREE, 1, 1);
 
 			// Add a pipeline barrier
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &shaderMemoryBarrier, 0, nullptr, 0, nullptr);
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+
+			// Run the sort shader
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, sortPipeline);
+			vkCmdDispatch(commandBuffer, WORKGROUP_COUNT_TREE, 1, 1);
+
+			// Add a pipeline barrier
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
 			// Get the new indices
 			particleSystem->NextComputeIndices();
@@ -730,6 +803,7 @@ namespace gsim {
 		vkDestroyPipeline(device->GetDevice(), boxPipeline, nullptr);
 		vkDestroyPipeline(device->GetDevice(), treePipeline, nullptr);
 		vkDestroyPipeline(device->GetDevice(), centerPipeline, nullptr);
+		vkDestroyPipeline(device->GetDevice(), sortPipeline, nullptr);
 
 		vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);
 
@@ -737,6 +811,7 @@ namespace gsim {
 		vkDestroyShaderModule(device->GetDevice(), boxShader, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), treeShader, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), centerShader, nullptr);
+		vkDestroyShaderModule(device->GetDevice(), sortShader, nullptr);
 
 		// Destroy the descriptor pool and all its components
 		vkDestroyDescriptorPool(device->GetDevice(), descriptorPool, nullptr);
