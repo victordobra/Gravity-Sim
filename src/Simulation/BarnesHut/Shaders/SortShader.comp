@@ -73,9 +73,22 @@ void main() {
 				if(children[i] == -1)
 					continue;
 				
-				// Set the child's start and update the start for the next child
+				// Set the child's start
 				ints[children[i]][0] = start;
-				start += ints[children[i]][1];
+
+				if(children[i] < PARTICLE_COUNT) {
+					// Write the particle's destination index
+					ints[start][1] = children[i];
+
+					// Write the particle's position as sorted in the output buffer
+					particlesPosOut[start] = particlesPosIn[children[i]];
+
+					// Update the start for the next child
+					++start;
+				} else {
+					// Update the start for the next child
+					start += ints[children[i]][1];
+				}
 			}
 
 			// Update the node index
