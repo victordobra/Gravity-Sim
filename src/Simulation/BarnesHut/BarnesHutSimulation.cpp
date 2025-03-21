@@ -8,7 +8,6 @@ namespace gsim {
 	// Constants
 	const uint32_t WORKGROUP_SIZE_TREE = 128;
 	const uint32_t WORKGROUP_COUNT_TREE = 128;
-	const uint32_t WORKGROUP_SIZE_FORCE = 64;
 
 	// Structs
 	struct GSIM_ALIGNAS(sizeof(Vec2)) SimulationState {
@@ -26,6 +25,7 @@ namespace gsim {
 		float simulationTime;
 		float gravitationalConst;
 		float softeningLenSqr;
+		float accuracyParameter;
 
 		int32_t particleCount;
 		int32_t bufferSize;
@@ -449,10 +449,11 @@ namespace gsim {
 		SpecializationConstants specializationConst {
 			.workgroupSizeTree = WORKGROUP_SIZE_TREE,
 			.workgroupCountTree = WORKGROUP_COUNT_TREE,
-			.workgroupSizeForce = WORKGROUP_SIZE_FORCE,
+			.workgroupSizeForce = device->GetSubgroupSize(),
 			.simulationTime = particleSystem->GetSimulationTime() * particleSystem->GetSimulationSpeed(),
 			.gravitationalConst = particleSystem->GetGravitationalConst(),
 			.softeningLenSqr = particleSystem->GetSofteningLen() * particleSystem->GetSofteningLen(),
+			.accuracyParameter = particleSystem->GetAccuracyParameter(),
 			.particleCount = (int32_t)particleSystem->GetAlignedParticleCount(),
 			.bufferSize = (int32_t)particleSystem->GetBufferSize()
 		};
@@ -491,11 +492,16 @@ namespace gsim {
 			},
 			{
 				.constantID = 6,
+				.offset = offsetof(SpecializationConstants, accuracyParameter),
+				.size = sizeof(float)
+			},
+			{
+				.constantID = 7,
 				.offset = offsetof(SpecializationConstants, particleCount),
 				.size = sizeof(int32_t)
 			},
 			{
-				.constantID = 7,
+				.constantID = 8,
 				.offset = offsetof(SpecializationConstants, bufferSize),
 				.size = sizeof(int32_t)
 			}
@@ -503,7 +509,7 @@ namespace gsim {
 
 		// Set the specialization info
 		VkSpecializationInfo specializationInfo {
-			.mapEntryCount = 8,
+			.mapEntryCount = 9,
 			.pMapEntries = specializationEntries,
 			.dataSize = sizeof(SpecializationConstants),
 			.pData = &specializationConst

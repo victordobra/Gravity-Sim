@@ -36,6 +36,7 @@ const char* const ARGS_HELP =
 	"\t--simulation-time: The time interval length, in seconds, simulated in one instance. Defaulted to 1e-3.\n"
 	"\t--simulation-speed: The speed factor at which the simulation is run. Defaulted to 1.\n"
 	"\t--softening-len: The softening length used to soften the extreme forces that would usually result from close interactions. Defaulted to 0.2.\n"
+	"\t--accuracy-parameter: The accuracy parameter used to calibrate force approximation. Only used for Barnes-Hut simulations. Defaulted to 1.\n"
 	"\t--simulation-algorithm: The simulation algorithm used to calculate the gravitational forces. One of the following options:\n"
 	"\t\tdirect-sum: The direct-sum method, calculating every interaction between particles.\n"
 	"\t\tbarnes-hut: The Barnes-Hut algorithm, organizing all particles in a quadtree.\n"
@@ -59,6 +60,7 @@ struct ProgramInfo {
 	float simulationTime = 0.001f;
 	float simulationSpeed = 1.0f;
 	float softeningLen = 0.2f;
+	float accuracyParameter = 1.0f;
 	gsim::ParticleSystem::SimulationAlgorithm simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_COUNT;
 	uint64_t maxSimulationCount = UINT64_MAX;
 
@@ -195,6 +197,8 @@ int main(int argc, char** args) {
 			programInfo.simulationSpeed = strtof(args[i] + 19, nullptr);
 		} else if(!strncmp(args[i], "--softening-len=", 16)) {
 			programInfo.softeningLen = strtof(args[i] + 16, nullptr);
+		} else if(!strncmp(args[i], "--accuracy-parameter=", 21)) {
+			programInfo.accuracyParameter = strtof(args[i] + 21, nullptr);
 		} else if(!strncmp(args[i], "--simulation-algorithm=", 23)) {
 			if(!strcmp(args[i] + 23, "direct-sum")) {
 				programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM;
@@ -245,9 +249,9 @@ int main(int argc, char** args) {
 
 			// Create the particle system
 			if(programInfo.particlesInFile) {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.simulationSpeed, programInfo.softeningLen, programInfo.simulationAlgorithm);
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.simulationSpeed, programInfo.softeningLen, programInfo.accuracyParameter, programInfo.simulationAlgorithm);
 			} else {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.simulationSpeed, programInfo.softeningLen, programInfo.simulationAlgorithm);
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.simulationSpeed, programInfo.softeningLen, programInfo.accuracyParameter, programInfo.simulationAlgorithm);
 			}
 
 			// Create the simulation
@@ -335,9 +339,9 @@ int main(int argc, char** args) {
 
 			// Create the particle system
 			if(programInfo.particlesInFile) {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.simulationSpeed, programInfo.softeningLen, programInfo.simulationAlgorithm);
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particlesInFile, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.simulationSpeed, programInfo.softeningLen, programInfo.accuracyParameter, programInfo.simulationAlgorithm);
 			} else {
-				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.simulationSpeed, programInfo.softeningLen, programInfo.simulationAlgorithm);
+				programInfo.particleSystem = new gsim::ParticleSystem(programInfo.device, programInfo.particleCount, programInfo.generateType, programInfo.generateSize, programInfo.minMass, programInfo.maxMass, programInfo.gravitationalConst, programInfo.simulationTime, programInfo.simulationSpeed, programInfo.softeningLen, programInfo.accuracyParameter, programInfo.simulationAlgorithm);
 			}
 
 			// Set the camera's starting info

@@ -8,9 +8,10 @@ layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 64;
 layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
 layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
 layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
+layout(constant_id = 6) const float ACCURACY_PARAMETER = 1.0;
 
-layout(constant_id = 6) const int PARTICLE_COUNT = 0;
-layout(constant_id = 7) const int BUFFER_SIZE = 0;
+layout(constant_id = 7) const int PARTICLE_COUNT = 0;
+layout(constant_id = 8) const int BUFFER_SIZE = 0;
 
 const uint STRIDE = WORKGROUP_SIZE_TREE * WORKGROUP_COUNT_TREE;
 
