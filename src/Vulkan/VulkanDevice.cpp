@@ -109,7 +109,17 @@ namespace gsim {
 
 		return indices;
 	}
-	static bool CheckPhysicalDeviceSupport(VkPhysicalDevice physicalDevice, VulkanSurface* surface) {
+	static bool CheckPhysicalDeviceSupport(VkPhysicalDevice physicalDevice, VulkanSurface* surface, VkPhysicalDeviceProperties2& properties2) {
+		// Check if the physical device's version is high enough
+		VkPhysicalDeviceProperties properties;
+		vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+		if(properties.apiVersion <= VK_API_VERSION_1_1)
+			return false;
+
+		// Get the physical device's full properties
+		vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
+
 		// Check for rendering support, if required
 		if(surface) {
 			// Get the number of supported extensions
@@ -167,17 +177,28 @@ namespace gsim {
 		// Get all physical devices
 		vkEnumeratePhysicalDevices(instance->GetInstance(), &physicalDeviceCount, physicalDevices);
 
+		// Set the subgroup properties info struct
+		VkPhysicalDeviceSubgroupProperties subgroupProperties {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES,
+			.pNext = nullptr
+		};
+		VkPhysicalDeviceProperties2 properties2 {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+			.pNext = &subgroupProperties
+		};
+
 		// Check if any physical devices support all requirements, preferrably a distrete device
 		for(uint32_t i = 0; i != physicalDeviceCount; ++i) {
 			// Skip the device if it is not supported
-			if(!CheckPhysicalDeviceSupport(physicalDevices[i], surface))
+			if(!CheckPhysicalDeviceSupport(physicalDevices[i], surface, properties2))
 				continue;
 			
 			// Set the new best physical device
 			physicalDevice = physicalDevices[i];
 
-			// Get the physical device's properties
-			vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+			// Ste the physical device's properties and subgroup size
+			properties = properties2.properties;
+			subgroupSize = subgroupProperties.subgroupSize;
 
 			// Exit the loop if the current supported device is discrete
 			if(properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)

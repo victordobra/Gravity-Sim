@@ -54,6 +54,16 @@ namespace gsim {
 
 	// Public functions
 	VulkanInstance::VulkanInstance(bool validationEnabled, Logger* logger) {
+		// Check if the Vulkan version is too low
+		PFN_vkEnumerateInstanceVersion pfn_vkEnumerateInstanceVersion = (PFN_vkEnumerateInstanceVersion)vkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceVersion");
+		if(!pfn_vkEnumerateInstanceVersion)
+			GSIM_THROW_EXCEPTION("Vulkan instance version is too low!");
+		
+		uint32_t version;
+		pfn_vkEnumerateInstanceVersion(&version);
+		if(version < VK_API_VERSION_1_1)
+			GSIM_THROW_EXCEPTION("Vulkan instance version is too low!");
+
 		// Get the number of supported extensions and layers
 		uint32_t supportedExtensionCount, supportedLayerCount;
 		vkEnumerateInstanceExtensionProperties(nullptr, &supportedExtensionCount, nullptr);

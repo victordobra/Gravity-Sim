@@ -76,6 +76,11 @@ namespace gsim {
 		const VkPhysicalDeviceFeatures& GetPhysicalDeviceFeatures() const {
 			return features;
 		}
+		/// @brief Gets the Vulkan physical device's subgroup size.
+		/// @return The Vulkan physical device's subgroup size.
+		uint32_t GetSubgroupSize() const {
+			return subgroupSize;
+		}
 
 		/// @brief Gets the size of the array containing all unique queue family indices.
 		/// @return The size of the array containing all unique queue family indices.
@@ -146,6 +151,7 @@ namespace gsim {
 		VkPhysicalDeviceProperties properties;
 		VkPhysicalDeviceMemoryProperties memoryProperties;
 		VkPhysicalDeviceFeatures features;
+		uint32_t subgroupSize;
 
 		uint32_t indexArrSize = 0;
 		uint32_t indexArr[4];
