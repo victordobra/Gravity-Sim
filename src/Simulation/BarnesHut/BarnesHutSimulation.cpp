@@ -91,23 +91,6 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation tree buffer! Error code: %s", string_VkResult(result));
 
 		
-		// Set the box buffer create info
-		VkBufferCreateInfo boxBufferInfo {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.size = particleSystem->GetBufferSize() * sizeof(Vec4),
-			.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-			.queueFamilyIndexCount = 1,
-			.pQueueFamilyIndices = &computeIndex
-		};
-		
-		// Create the box buffer
-		result = vkCreateBuffer(device->GetDevice(), &boxBufferInfo, nullptr, &boxBuffer);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation box buffer! Error code: %s", string_VkResult(result));
-		
 		// Set the interval buffer create info
 		VkBufferCreateInfo intBufferInfo {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -126,30 +109,26 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation interval buffer! Error code: %s", string_VkResult(result));
 		
 		// Get the buffer memory requirements	
-		VkMemoryRequirements stateMemRequirements, treeMemRequirements, boxMemRequirements, intMemRequirements;
+		VkMemoryRequirements stateMemRequirements, treeMemRequirements, intMemRequirements;
 
 		vkGetBufferMemoryRequirements(device->GetDevice(), stateBuffer, &stateMemRequirements);
 		vkGetBufferMemoryRequirements(device->GetDevice(), treeBuffer, &treeMemRequirements);
-		vkGetBufferMemoryRequirements(device->GetDevice(), boxBuffer, &boxMemRequirements);
 		vkGetBufferMemoryRequirements(device->GetDevice(), intBuffer, &intMemRequirements);
 
 		// Get the max alignment
 		VkDeviceSize alignment = stateMemRequirements.alignment;
 		if(treeMemRequirements.alignment > alignment)
 			alignment = treeMemRequirements.alignment;
-		if(boxMemRequirements.alignment > alignment)
-			alignment = boxMemRequirements.alignment;
 		if(intMemRequirements.alignment > alignment)
 			alignment = intMemRequirements.alignment;
 		
 		// Align all buffer sizes to the max alignment
 		stateMemRequirements.size = (stateMemRequirements.size + alignment - 1) & ~(alignment - 1);
 		treeMemRequirements.size = (treeMemRequirements.size + alignment - 1) & ~(alignment - 1);
-		boxMemRequirements.size = (boxMemRequirements.size + alignment - 1) & ~(alignment - 1);
 		intMemRequirements.size = (intMemRequirements.size + alignment - 1) & ~(alignment - 1);
 
 		// Get the memory type index
-		uint32_t memoryTypeBits = stateMemRequirements.memoryTypeBits & treeMemRequirements.memoryTypeBits & boxMemRequirements.memoryTypeBits & intMemRequirements.memoryTypeBits;
+		uint32_t memoryTypeBits = stateMemRequirements.memoryTypeBits & treeMemRequirements.memoryTypeBits & intMemRequirements.memoryTypeBits;
 		uint32_t memoryTypeIndex = device->GetMemoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryTypeBits);
 		if(memoryTypeIndex == UINT32_MAX)
 			GSIM_THROW_EXCEPTION("Failed to find supported memory type for Vulkan Barnes-Hut simulation buffers!");
@@ -158,7 +137,7 @@ namespace gsim {
 		VkMemoryAllocateInfo allocInfo {
 			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 			.pNext = nullptr,
-			.allocationSize = stateMemRequirements.size + treeMemRequirements.size + boxMemRequirements.size + intMemRequirements.size,
+			.allocationSize = stateMemRequirements.size + treeMemRequirements.size + intMemRequirements.size,
 			.memoryTypeIndex = memoryTypeIndex
 		};
 
@@ -177,13 +156,8 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to bind Vulkan Barnes-Hut tree buffer to its memory! Error code: %s", string_VkResult(result));
 		
-		// Bind the box buffer to its memory
-		result = vkBindBufferMemory(device->GetDevice(), boxBuffer, bufferMemory, stateMemRequirements.size + treeMemRequirements.size);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to bind Vulkan Barnes-Hut box buffer to its memory! Error code: %s", string_VkResult(result));
-		
 		// Bind the interval buffer to its memory
-		result = vkBindBufferMemory(device->GetDevice(), intBuffer, bufferMemory, stateMemRequirements.size + treeMemRequirements.size + boxMemRequirements.size);
+		result = vkBindBufferMemory(device->GetDevice(), intBuffer, bufferMemory, stateMemRequirements.size + treeMemRequirements.size);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to bind Vulkan Barnes-Hut interval buffer to its memory! Error code: %s", string_VkResult(result));
 	}
@@ -249,13 +223,6 @@ namespace gsim {
 				.descriptorCount = 1,
 				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 				.pImmutableSamplers = nullptr
-			},
-			{
-				.binding = 3,
-				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				.descriptorCount = 1,
-				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-				.pImmutableSamplers = nullptr
 			}
 		};
 
@@ -264,7 +231,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.bindingCount = 4,
+			.bindingCount = 3,
 			.pBindings = barnesHutSetLayoutBindings
 		};
 
@@ -276,7 +243,7 @@ namespace gsim {
 		// Set the descriptor pool size
 		VkDescriptorPoolSize descriptorPoolSize {
 			.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			.descriptorCount = 13
+			.descriptorCount = 12
 		};
 
 		// Set the descriptor pool create info
@@ -311,7 +278,7 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan compute pipeline descriptor sets! Error code: %s", string_VkResult(result));
 		
 		// Set the descriptor buffer infos
-		VkDescriptorBufferInfo descriptorBufferInfos[13];
+		VkDescriptorBufferInfo descriptorBufferInfos[12];
 		for(size_t i = 0, ind = 0; i != 3; ++i) {
 			descriptorBufferInfos[ind].buffer = particleSystem->GetBuffers()[i].posBuffer;
 			descriptorBufferInfos[ind].offset = 0;
@@ -335,16 +302,12 @@ namespace gsim {
 		descriptorBufferInfos[10].offset = 0;
 		descriptorBufferInfos[10].range = VK_WHOLE_SIZE;
 
-		descriptorBufferInfos[11].buffer = boxBuffer;
+		descriptorBufferInfos[11].buffer = intBuffer;
 		descriptorBufferInfos[11].offset = 0;
 		descriptorBufferInfos[11].range = VK_WHOLE_SIZE;
 
-		descriptorBufferInfos[12].buffer = intBuffer;
-		descriptorBufferInfos[12].offset = 0;
-		descriptorBufferInfos[12].range = VK_WHOLE_SIZE;
-
 		// Set the descriptor set writes
-		VkWriteDescriptorSet descriptorSetWrites[13];
+		VkWriteDescriptorSet descriptorSetWrites[12];
 		for(size_t i = 0, ind = 0; i != 3; ++i) {
 			for(size_t j = 0; j != 3; ++j, ++ind) {
 				descriptorSetWrites[ind].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -359,7 +322,7 @@ namespace gsim {
 				descriptorSetWrites[ind].pTexelBufferView = nullptr;
 			}
 		}
-		for(size_t i = 0, ind = 9; i != 4; ++i, ++ind) {
+		for(size_t i = 0, ind = 9; i != 3; ++i, ++ind) {
 			descriptorSetWrites[ind].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorSetWrites[ind].pNext = nullptr;
 			descriptorSetWrites[ind].dstSet = descriptorSets[3];
@@ -373,7 +336,7 @@ namespace gsim {
 		}
 
 		// Update the descriptor sets
-		vkUpdateDescriptorSets(device->GetDevice(), 13, descriptorSetWrites, 0, nullptr);
+		vkUpdateDescriptorSets(device->GetDevice(), 12, descriptorSetWrites, 0, nullptr);
 	}
 	void BarnesHutSimulation::CreateShaderModules() {
 		// Set the box shader module info
@@ -713,7 +676,6 @@ namespace gsim {
 		// Clear the buffers
 		vkCmdFillBuffer(commandBuffers[0], stateBuffer, 0, VK_WHOLE_SIZE, 0);
 		vkCmdFillBuffer(commandBuffers[0], treeBuffer, 0, VK_WHOLE_SIZE, (uint32_t)-1);
-		vkCmdFillBuffer(commandBuffers[0], boxBuffer, 0, VK_WHOLE_SIZE, 0);
 		vkCmdFillBuffer(commandBuffers[0], intBuffer, 0, VK_WHOLE_SIZE, (uint32_t)-1);
 
 		// End recording the command buffer
@@ -915,7 +877,6 @@ namespace gsim {
 		// Destroy all created buffers and free the used memory
 		vkDestroyBuffer(device->GetDevice(), stateBuffer, nullptr);
 		vkDestroyBuffer(device->GetDevice(), treeBuffer, nullptr);
-		vkDestroyBuffer(device->GetDevice(), boxBuffer, nullptr);
 		vkDestroyBuffer(device->GetDevice(), intBuffer, nullptr);
 
 		vkFreeMemory(device->GetDevice(), bufferMemory, nullptr);

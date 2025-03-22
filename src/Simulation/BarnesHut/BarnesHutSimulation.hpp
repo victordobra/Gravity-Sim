@@ -66,7 +66,6 @@ namespace gsim {
 
 		VkBuffer stateBuffer;
 		VkBuffer treeBuffer;
-		VkBuffer boxBuffer;
 		VkBuffer intBuffer;
 		VkDeviceMemory bufferMemory;
 

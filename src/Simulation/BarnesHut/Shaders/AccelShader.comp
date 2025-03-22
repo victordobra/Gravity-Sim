@@ -34,6 +34,21 @@ layout(set = 1, binding = 2) coherent buffer ParticlesMassOutBuffer {
 	float particlesMassOut[];
 };
 
+// Simulation buffers
+layout(set = 2, binding = 0) coherent buffer StateBuffer {
+	vec4 box;
+	vec4 boxes[WORKGROUP_COUNT_TREE];
+
+	int semaphore;
+	int treeTop;
+} state;
+layout(set = 2, binding = 1) coherent buffer TreeBuffer {
+	ivec4 tree[];
+};
+layout(set = 2, binding = 2) coherent buffer IntBuffer {
+	ivec2 ints[];
+};
+
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 void main() {
