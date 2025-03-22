@@ -25,7 +25,7 @@ namespace gsim {
 		float simulationTime;
 		float gravitationalConst;
 		float softeningLenSqr;
-		float accuracyParameter;
+		float accuracyParameterSqr;
 
 		int32_t particleCount;
 		int32_t bufferSize;
@@ -43,6 +43,12 @@ namespace gsim {
 	};
 	const uint32_t SORT_SHADER_SOURCE[] {
 #include "Shaders/SortShader.comp.u32"
+	};
+	const uint32_t FORCE_SHADER_SOURCE[] {
+#include "Shaders/ForceShader.comp.u32"	
+	};
+	const uint32_t ACCEL_SHADER_SOURCE[] {
+#include  "Shaders/AccelShader.comp.u32"
 	};
 
 	// Internal helper functions
@@ -425,6 +431,34 @@ namespace gsim {
 		result = vkCreateShaderModule(device->GetDevice(), &sortShaderInfo, nullptr, &sortShader);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut sort shader module! Error code: %s", string_VkResult(result));
+		
+		// Set the force shader module info
+		VkShaderModuleCreateInfo forceShaderInfo {
+			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.codeSize = sizeof(FORCE_SHADER_SOURCE),
+			.pCode = FORCE_SHADER_SOURCE
+		};
+
+		// Create the force shader module
+		result = vkCreateShaderModule(device->GetDevice(), &forceShaderInfo, nullptr, &forceShader);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut force shader module! Error code: %s", string_VkResult(result));
+		
+		// Set the acceleration shader module info
+		VkShaderModuleCreateInfo accelShaderInfo {
+			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.codeSize = sizeof(ACCEL_SHADER_SOURCE),
+			.pCode = ACCEL_SHADER_SOURCE
+		};
+
+		// Create the acceleration shader module
+		result = vkCreateShaderModule(device->GetDevice(), &accelShaderInfo, nullptr, &accelShader);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut acceleration shader module! Error code: %s", string_VkResult(result));
 	}
 	void BarnesHutSimulation::CreatePipelines() {
 		// Set the pipeline layout info
@@ -453,7 +487,7 @@ namespace gsim {
 			.simulationTime = particleSystem->GetSimulationTime() * particleSystem->GetSimulationSpeed(),
 			.gravitationalConst = particleSystem->GetGravitationalConst(),
 			.softeningLenSqr = particleSystem->GetSofteningLen() * particleSystem->GetSofteningLen(),
-			.accuracyParameter = particleSystem->GetAccuracyParameter(),
+			.accuracyParameterSqr = particleSystem->GetAccuracyParameter() * particleSystem->GetAccuracyParameter(),
 			.particleCount = (int32_t)particleSystem->GetAlignedParticleCount(),
 			.bufferSize = (int32_t)particleSystem->GetBufferSize()
 		};
@@ -492,7 +526,7 @@ namespace gsim {
 			},
 			{
 				.constantID = 6,
-				.offset = offsetof(SpecializationConstants, accuracyParameter),
+				.offset = offsetof(SpecializationConstants, accuracyParameterSqr),
 				.size = sizeof(float)
 			},
 			{
@@ -584,13 +618,47 @@ namespace gsim {
 				.layout = pipelineLayout,
 				.basePipelineHandle = VK_NULL_HANDLE,
 				.basePipelineIndex = -1
+			},
+			{
+				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = 0,
+				.stage = {
+					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+					.pNext = nullptr,
+					.flags = 0,
+					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
+					.module = forceShader,
+					.pName = "main",
+					.pSpecializationInfo = &specializationInfo
+				},
+				.layout = pipelineLayout,
+				.basePipelineHandle = VK_NULL_HANDLE,
+				.basePipelineIndex = -1
+			},
+			{
+				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = 0,
+				.stage = {
+					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+					.pNext = nullptr,
+					.flags = 0,
+					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
+					.module = accelShader,
+					.pName = "main",
+					.pSpecializationInfo = &specializationInfo
+				},
+				.layout = pipelineLayout,
+				.basePipelineHandle = VK_NULL_HANDLE,
+				.basePipelineIndex = -1
 			}
 		};
 
 		// Create the pipelines
-		VkPipeline pipelines[4];
+		VkPipeline pipelines[6];
 
-		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 4, pipelineInfos, nullptr, pipelines);
+		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 6, pipelineInfos, nullptr, pipelines);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut compute pipelines! Error code: %s", string_VkResult(result));
 		
@@ -598,6 +666,8 @@ namespace gsim {
 		treePipeline = pipelines[1];
 		centerPipeline = pipelines[2];
 		sortPipeline = pipelines[3];
+		forcePipeline = pipelines[4];
+		accelPipeline = pipelines[5];
 	}
 	void BarnesHutSimulation::CreateCommandObjects() {
 		// Set the simulation fence create info
@@ -759,6 +829,20 @@ namespace gsim {
 			// Add a pipeline barrier
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
+			// Run the force shader
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, forcePipeline);
+			vkCmdDispatch(commandBuffer, (particleSystem->GetParticleCount() + device->GetSubgroupSize() - 1) / device->GetSubgroupSize(), 1, 1);
+
+			// Add a pipeline barrier
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+
+			// Run the acceleration shader
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, accelPipeline);
+			vkCmdDispatch(commandBuffer, (particleSystem->GetParticleCount() + WORKGROUP_SIZE_TREE - 1) / WORKGROUP_SIZE_TREE, 1, 1);
+
+			// Add a pipeline barrier
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+
 			// Get the new indices
 			particleSystem->NextComputeIndices();
 		}
@@ -810,6 +894,8 @@ namespace gsim {
 		vkDestroyPipeline(device->GetDevice(), treePipeline, nullptr);
 		vkDestroyPipeline(device->GetDevice(), centerPipeline, nullptr);
 		vkDestroyPipeline(device->GetDevice(), sortPipeline, nullptr);
+		vkDestroyPipeline(device->GetDevice(), forcePipeline, nullptr);
+		vkDestroyPipeline(device->GetDevice(), accelPipeline, nullptr);
 
 		vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);
 
@@ -818,6 +904,8 @@ namespace gsim {
 		vkDestroyShaderModule(device->GetDevice(), treeShader, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), centerShader, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), sortShader, nullptr);
+		vkDestroyShaderModule(device->GetDevice(), forceShader, nullptr);
+		vkDestroyShaderModule(device->GetDevice(), accelShader, nullptr);
 
 		// Destroy the descriptor pool and all its components
 		vkDestroyDescriptorPool(device->GetDevice(), descriptorPool, nullptr);

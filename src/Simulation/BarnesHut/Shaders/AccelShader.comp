@@ -1,0 +1,56 @@
+#version 440
+
+// Constants
+layout(constant_id = 0) const uint WORKGROUP_SIZE_TREE = 128;
+layout(constant_id = 1) const uint WORKGROUP_COUNT_TREE = 128;
+layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 32;
+
+layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
+layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
+layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
+layout(constant_id = 6) const float ACCURACY_PARAMETER_SQR = 1.0;
+
+layout(constant_id = 7) const int PARTICLE_COUNT = 0;
+layout(constant_id = 8) const int BUFFER_SIZE = 0;
+
+// Particle buffers
+layout(set = 0, binding = 0) coherent buffer ParticlesPosInBuffer {
+	vec2 particlesPosIn[];
+};
+layout(set = 0, binding = 1) coherent buffer ParticlesVelInBuffer {
+	vec2 particlesVelIn[];
+};
+layout(set = 0, binding = 2) coherent buffer ParticlesMassInBuffer {
+	float particlesMassIn[];
+};
+
+layout(set = 1, binding = 0) coherent buffer ParticlesPosOutBuffer {
+	vec2 particlesPosOut[];
+};
+layout(set = 1, binding = 1) coherent buffer ParticlesVelOutBuffer {
+	vec2 particlesVelOut[];
+};
+layout(set = 1, binding = 2) coherent buffer ParticlesMassOutBuffer {
+	float particlesMassOut[];
+};
+
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+	// Exit if the invocation's index is too high
+	if(gl_GlobalInvocationID.x >= PARTICLE_COUNT)
+		return;
+
+	// Load the particle's info
+	vec2 pos = particlesPosIn[gl_GlobalInvocationID.x];
+	vec2 vel = particlesVelIn[gl_GlobalInvocationID.x];
+	vec2 accel = particlesVelOut[gl_GlobalInvocationID.x];
+
+	// Calculate the new position and velocity
+	vec2 newVel = vel + accel * (GRAVITATIONAL_CONST * SIMULATION_TIME);
+	vec2 newPos = pos + (vel + newVel) * (0.5 * SIMULATION_TIME);
+
+	// Write the particle's new info
+	particlesPosOut[gl_GlobalInvocationID.x] = newPos;
+	particlesVelOut[gl_GlobalInvocationID.x] = newVel;
+}
