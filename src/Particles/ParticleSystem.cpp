@@ -6,28 +6,23 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <random>
 
 #include <vulkan/vk_enum_string_helper.h>
 
 namespace gsim {
 	// Internal helper functions
-	float RandomFloat() {
-		int32_t val1 = rand(), val2 = rand();
-		int32_t val = val1 * (RAND_MAX + 1) + val2;
-		int32_t max = RAND_MAX * (RAND_MAX + 2);
-
-		return (float)val / max;
-	}
-
 	void ParticleSystem::GenerateParticlesRandom(Particle* particles, float generateSize, float minMass, float maxMass) {
-		// Set the random seed
-		srand(time(nullptr));
+		// Create the random engine and distribution
+		std::default_random_engine randomEngine;
+		randomEngine.seed(time(nullptr));
+		std::uniform_real_distribution<float> distribution(0, 1);
 
 		// Generate every particle
 		for(size_t i = 0; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar
-			float theta = RandomFloat() * 2 * M_PI;
-			float r = sqrt(RandomFloat()) * generateSize;
+			float theta = distribution(randomEngine) * 2 * M_PI;
+			float r = sqrt(1 - distribution(randomEngine)) * generateSize;
 
 			// Convert the polar coordinates to cartesian
 			particles[i].pos = { r * cosf(theta), r * sinf(theta) };
@@ -36,12 +31,14 @@ namespace gsim {
 			particles[i].vel = { 0, 0 };
 
 			// Generate the particle's mass
-			particles[i].mass = ((float)rand() / RAND_MAX) * (maxMass - minMass) + minMass;
+			particles[i].mass = distribution(randomEngine) * (maxMass - minMass) + minMass;
 		}
 	}
 	void ParticleSystem::GenerateParticlesGalaxy(Particle* particles, float generateSize, float minMass, float maxMass) {
-		// Set the random seed
-		srand(time(nullptr));
+		// Create the random engine and distribution
+		std::default_random_engine randomEngine;
+		randomEngine.seed(time(nullptr));
+		std::uniform_real_distribution<float> distribution(0, 1);
 
 		// Calculate the orbit velocity
 		float avgMass = (minMass + maxMass) * 0.5f;
@@ -50,8 +47,8 @@ namespace gsim {
 		// Generate every particle
 		for(size_t i = 0; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar
-			float theta = RandomFloat() * 2 * M_PI;
-			float r = RandomFloat() * generateSize;
+			float theta = distribution(randomEngine) * 2 * M_PI;
+			float r = (1 - distribution(randomEngine)) * generateSize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -63,12 +60,14 @@ namespace gsim {
 			particles[i].vel = { -thetaSin * r * vel, thetaCos * r * vel };
 
 			// Generate the particle's mass
-			particles[i].mass = RandomFloat() * (maxMass - minMass) + minMass;
+			particles[i].mass = distribution(randomEngine) * (maxMass - minMass) + minMass;
 		}
 	}
 	void ParticleSystem::GenerateParticlesGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass) {
-		// Set the random seed
-		srand(time(nullptr));
+		// Create the random engine and distribution
+		std::default_random_engine randomEngine;
+		randomEngine.seed(time(nullptr));
+		std::uniform_real_distribution<float> distribution(0, 1);
 
 		// Calculate the orbit velocity
 		float galaxySize = generateSize / 3;
@@ -78,8 +77,8 @@ namespace gsim {
 		// Generate every particle in the first galaxy
 		for(size_t i = 0; i != particleCount >> 1; ++i) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
-			float theta = RandomFloat() * 2 * M_PI;
-			float r = RandomFloat() * galaxySize;
+			float theta = distribution(randomEngine) * 2 * M_PI;
+			float r = (1 - distribution(randomEngine)) * galaxySize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -91,14 +90,14 @@ namespace gsim {
 			particles[i].vel = { -thetaSin * r * vel + galaxySize * 0.1f, thetaCos * r * vel };
 
 			// Generate the particle's mass
-			particles[i].mass = RandomFloat() * (maxMass - minMass) + minMass;
+			particles[i].mass = distribution(randomEngine) * (maxMass - minMass) + minMass;
 		}
 
 		// Generate avery particle in the second galaxy
 		for(size_t i = particleCount >> 1; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
-			float theta = RandomFloat() * 2 * M_PI;
-			float r = RandomFloat() * galaxySize;
+			float theta = distribution(randomEngine) * 2 * M_PI;
+			float r = (1 - distribution(randomEngine)) * galaxySize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -110,12 +109,14 @@ namespace gsim {
 			particles[i].vel = { -thetaSin * r * vel - galaxySize * 0.1f, thetaCos * r * vel };
 
 			// Generate the particle's mass
-			particles[i].mass = RandomFloat() * (maxMass - minMass) + minMass;
+			particles[i].mass = distribution(randomEngine) * (maxMass - minMass) + minMass;
 		}
 	}
 	void ParticleSystem::GenerateParticlesSymmetricalGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass) {
-		// Set the random seed
-		srand(time(nullptr));
+		// Create the random engine and distribution
+		std::default_random_engine randomEngine;
+		randomEngine.seed(time(nullptr));
+		std::uniform_real_distribution<float> distribution(0, 1);
 
 		// Calculate the orbit velocity
 		float galaxySize = generateSize / 3;
@@ -125,8 +126,8 @@ namespace gsim {
 		// Generate every particle in the first galaxy and mirror it in the second
 		for(size_t i = 0; i != particleCount; i += 2) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
-			float theta = RandomFloat() * 2 * M_PI;
-			float r = RandomFloat() * galaxySize;
+			float theta = distribution(randomEngine) * 2 * M_PI;
+			float r = (1 - distribution(randomEngine)) * galaxySize;
 
 			float thetaSin = sinf(theta);
 			float thetaCos = cosf(theta);
@@ -138,7 +139,7 @@ namespace gsim {
 			particles[i].vel = { -thetaSin * r * vel + galaxySize * 0.1f, thetaCos * r * vel };
 
 			// Generate the particle's mass
-			particles[i].mass = RandomFloat() * (maxMass - minMass) + minMass;
+			particles[i].mass = distribution(randomEngine) * (maxMass - minMass) + minMass;
 
 			// Mirror the particle from the first galaxy in the second
 			particles[i + 1].pos = { -particles[i].pos.x, particles[i].pos.y };
