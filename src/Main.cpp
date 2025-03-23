@@ -255,7 +255,7 @@ int main(int argc, char** args) {
 			}
 
 			// Create the simulation
-			if(programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
+			if(programInfo.simulationAlgorithm == gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
 				programInfo.directSim = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
 			} else {
 				programInfo.barnesHutSim = new gsim::BarnesHutSimulation(programInfo.device, programInfo.particleSystem);
@@ -282,6 +282,13 @@ int main(int argc, char** args) {
 					programInfo.targetSimulationCount = programInfo.maxSimulationCount;
 			}
 
+			// Destroy the simulation
+			if(programInfo.directSim) {
+				delete programInfo.directSim;
+			} else {
+				delete programInfo.barnesHutSim;
+			}
+
 			// Output the benchmark info, if requested
 			if(programInfo.benchmark) {
 				// Calculate the total and average runtimes
@@ -304,13 +311,6 @@ int main(int argc, char** args) {
 				} else {
 					programInfo.logger->LogMessageForced(gsim::Logger::MESSAGE_LEVEL_INFO, "Average runtime/simulation: %.1fus", (runtimeAvgMs * 1000));
 				}
-			}
-
-			// Destroy the simulation
-			if(programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
-				delete programInfo.directSim;
-			} else {
-				delete programInfo.barnesHutSim;
 			}
 
 			// Save the particle infos, if an output file was provided
@@ -351,7 +351,7 @@ int main(int argc, char** args) {
 			// Create the pipelines
 			programInfo.graphicsPipeline = new gsim::GraphicsPipeline(programInfo.device, programInfo.swapChain, programInfo.particleSystem);
 
-			if(programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
+			if(programInfo.simulationAlgorithm == gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
 				programInfo.directSim = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
 			} else {
 				programInfo.barnesHutSim = new gsim::BarnesHutSimulation(programInfo.device, programInfo.particleSystem);
@@ -392,7 +392,7 @@ int main(int argc, char** args) {
 			// Destroy the pipelines
 			delete programInfo.graphicsPipeline;
 			
-			if(programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
+			if(programInfo.directSim) {
 				delete programInfo.directSim;
 			} else {
 				delete programInfo.barnesHutSim;
