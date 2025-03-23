@@ -753,8 +753,8 @@ namespace gsim {
 		VkMemoryBarrier memoryBarrier {
 			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
 			.pNext = nullptr,
-			.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT
+			.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT
 		};
 
 		// Record every simulation

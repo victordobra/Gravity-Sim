@@ -70,7 +70,7 @@ void main() {
 	float radiusSqr = dot(size, size) * 0.5;
 
 	// Initialize the stack
-	if(gl_SubgroupInvocationID == 0) {
+	if(subgroupElect()) {
 		stack[0] = BUFFER_SIZE - 1;
 		depthSqr[0] = radiusSqr;
 	}
@@ -84,18 +84,18 @@ void main() {
 
 	// Traverse the tree
 	while(top != 0) {
-		// Get the current node's info
-		int node = stack[top - 1];
-		float childDepthSqr = depthSqr[top - 1] * 0.25;
-		ivec4 children = tree[node];
-
-		// Remove the node from the stack
+		// Remove the top node from the stack
 		--top;
+
+		// Get the current node's info
+		int node = stack[top];
+		float childDepthSqr = depthSqr[top] * 0.25;
+		ivec4 children = tree[node];
 
 		// Loop through the node's children
 		for(int i = 0; i != 4; ++i) {
 			// Check if the current child is valid
-			if(children[i] == -1)
+			if(subgroupAll(children[i] == -1))
 				continue;
 
 			// Load the child's info
@@ -106,19 +106,21 @@ void main() {
 			float dist = dot(distVec, distVec) + SOFTENING_LEN_SQR;
 
 			// Check if the force can be applied
-			if(children[i] < PARTICLE_COUNT || subgroupAll(childDepthSqr <= dist * ACCURACY_PARAMETER_SQR)) {
+			if(subgroupAll(children[i] < PARTICLE_COUNT || childDepthSqr <= dist * ACCURACY_PARAMETER_SQR)) {
 				// Calculate the force applied
 				dist = inversesqrt(dist);
 				accel += distVec * (childMass * dist * dist * dist);
-			} else if(childDepthSqr > 1) {
+			} else {
 				// Add the child to the stack
-				if(gl_SubgroupInvocationID == 0) {
+				if(subgroupElect()) {
 					stack[top] = children[i];
 					depthSqr[top] = childDepthSqr;
 				}
 				++top;
 			}
 		}
+
+		subgroupMemoryBarrierShared();
 	}
 
 	subgroupBarrier();

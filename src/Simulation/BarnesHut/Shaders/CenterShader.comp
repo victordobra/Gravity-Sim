@@ -112,17 +112,17 @@ void main() {
 				// Check if the child is ready
 				readyChild = mass > 0;
 				if(readyChild) {
+					// Remove the child from the stack
+					--pendingCount;
+
 					// Load the particle's position and child count
-					vec2 pos = particlesPosIn[pending[pendingCount - 1]];
-					int count = ints[pending[pendingCount - 1]][1];
+					vec2 pos = particlesPosIn[pending[pendingCount]];
+					int count = ints[pending[pendingCount]][1];
 
 					// Add the particle's contribution to the center of gravity
 					centerPos += pos * mass;
 					centerMass += mass;
 					centerCount += count;
-
-					// Remove the child from the stack
-					--pendingCount;
 				}
 			}
 		}
