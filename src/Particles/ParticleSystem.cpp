@@ -662,13 +662,13 @@ namespace gsim {
 			.size = alignedParticleCount * sizeof(Vec2)
 		};
 		VkBufferCopy velCopyRegion {
-			.srcOffset = alignedParticleCount * sizeof(Vec2),
-			.dstOffset = 0,
+			.srcOffset = 0,
+			.dstOffset = alignedParticleCount * sizeof(Vec2),
 			.size = alignedParticleCount * sizeof(Vec2)
 		};
 		VkBufferCopy massCopyRegion {
-			.srcOffset = alignedParticleCount * (sizeof(Vec2) << 1),
-			.dstOffset = 0,
+			.srcOffset = 0,
+			.dstOffset = alignedParticleCount * (sizeof(Vec2) << 1),
 			.size = alignedParticleCount * sizeof(float)
 		};
 
@@ -729,13 +729,13 @@ namespace gsim {
 		// Copy the staging buffer's data to the given particle array
 		Vec2* vec2Iter = (Vec2*)stagingData;
 		for(size_t i = 0; i != particleCount; ++i)
-			*vec2Iter = particles[i].pos;
+			particles[i].pos = vec2Iter[i];
 		vec2Iter += alignedParticleCount;
 		for(size_t i = 0; i != particleCount; ++i)
-			*vec2Iter = particles[i].vel;
+			particles[i].vel = vec2Iter[i];
 		float* floatIter = (float*)(vec2Iter + alignedParticleCount);
 		for(size_t i = 0; i != particleCount; ++i)
-			*floatIter = particles[i].mass;
+			particles[i].mass = floatIter[i];
 
 		// Unmap the staging buffer's memory
 		vkUnmapMemory(device->GetDevice(), stagingMemory);
