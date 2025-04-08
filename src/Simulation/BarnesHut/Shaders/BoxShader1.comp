@@ -1,0 +1,110 @@
+#version 440
+
+// Constants
+layout(constant_id = 0) const uint WORKGROUP_SIZE_BOX = 128;
+layout(constant_id = 1) const uint WORKGROUP_SIZE_TREE = 8;
+layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 32;
+
+layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
+layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
+layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
+layout(constant_id = 6) const float ACCURACY_PARAMETER_SQR = 1.0;
+
+layout(constant_id = 7) const int PARTICLE_COUNT = 0;
+layout(constant_id = 8) const int BUFFER_SIZE = 0;
+
+const float INFINITY = 1.0 / 0.0;
+const uint STRIDE = WORKGROUP_SIZE_BOX * WORKGROUP_SIZE_BOX;
+
+// Particle buffers
+layout(set = 0, binding = 0) coherent buffer ParticlesPosInBuffer {
+	vec2 particlesPosIn[];
+};
+layout(set = 0, binding = 1) coherent buffer ParticlesVelInBuffer {
+	vec2 particlesVelIn[];
+};
+layout(set = 0, binding = 2) coherent buffer ParticlesMassInBuffer {
+	float particlesMassIn[];
+};
+
+layout(set = 1, binding = 0) coherent buffer ParticlesPosOutBuffer {
+	vec2 particlesPosOut[];
+};
+layout(set = 1, binding = 1) coherent buffer ParticlesVelOutBuffer {
+	vec2 particlesVelOut[];
+};
+layout(set = 1, binding = 2) coherent buffer ParticlesMassOutBuffer {
+	float particlesMassOut[];
+};
+
+// Simulation buffers
+layout(set = 2, binding = 0) coherent buffer StateBuffer {
+	vec4 box;
+	vec4 boxes[WORKGROUP_SIZE_BOX];
+} state;
+layout(set = 2, binding = 1) coherent buffer CountBuffer {
+	uint counts[];
+};
+layout(set = 2, binding = 2) coherent buffer RadiusBuffer {
+	float radiuses[];
+};
+layout(set = 2, binding = 3) coherent buffer SrcBuffer {
+	uint sortedSrc[];
+};
+layout(set = 2, binding = 4, r32ui) coherent uniform uimage2D treeCount[11];
+layout(set = 2, binding = 5, rg32ui) coherent uniform uimage2D treeStart[11];
+layout(set = 2, binding = 6, rg32f) coherent uniform image2D treePos[11];
+layout(set = 2, binding = 7, r32f) coherent uniform image2D treeMass[11];
+
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+
+// Shared box buffer
+shared vec4 sharedBoxes[WORKGROUP_SIZE_BOX];
+
+void main() {
+	// Find the bounding box for all particles loaded by this thread
+	float minX = INFINITY, minY = INFINITY;
+	float maxX = -INFINITY, maxY = -INFINITY;
+
+	for(uint i = gl_GlobalInvocationID.x; i < PARTICLE_COUNT; i += STRIDE) {
+		// Load the current particle's position
+		vec2 pos = particlesPosIn[i];
+
+		// Set the box's new info
+		minX = min(minX, pos.x);
+		minY = min(minY, pos.y);
+		maxX = max(maxX, pos.x);
+		maxY = max(maxY, pos.y);
+
+		// Wait for all threads in the group to finish for coalesced access
+		barrier();
+	}
+
+	// Write the bounding box to shared memory
+	sharedBoxes[gl_LocalInvocationID.x] = vec4(minX, minY, maxX, maxY);
+	memoryBarrierShared();
+	barrier();
+
+	// Apply reduction to get the bounding box for the whole group
+	for(uint inc = 1; inc != WORKGROUP_SIZE_BOX; inc <<= 1) {
+		if((gl_LocalInvocationID.x & ((inc << 1) - 1)) == 0) {
+			// Set the new min and max coordinates
+			vec4 box = sharedBoxes[gl_LocalInvocationID.x + inc];
+
+			minX = min(minX, box.x);
+			minY = min(minY, box.y);
+			maxX = max(maxX, box.z);
+			maxY = max(maxY, box.w);
+
+			// Write the new box's info to the shared memory
+			sharedBoxes[gl_LocalInvocationID.x] = vec4(minX, minY, maxX, maxY);
+		}
+
+		// Wait for all threads to finish the reduction step
+		barrier();
+	}
+
+	// Write the max coordinates of the subgroup and increment the semaphore from the first thread of the subgroup
+	if(gl_LocalInvocationID.x == 0)
+		state.boxes[gl_WorkGroupID.x] = vec4(minX, minY, maxX, maxY);
+}

@@ -1,8 +1,8 @@
 #version 440
 
 // Constants
-layout(constant_id = 0) const uint WORKGROUP_SIZE_TREE = 128;
-layout(constant_id = 1) const uint WORKGROUP_COUNT_TREE = 128;
+layout(constant_id = 0) const uint WORKGROUP_SIZE_BOX = 128;
+layout(constant_id = 1) const uint WORKGROUP_SIZE_TREE = 8;
 layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 32;
 
 layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
@@ -37,35 +37,30 @@ layout(set = 1, binding = 2) coherent buffer ParticlesMassOutBuffer {
 // Simulation buffers
 layout(set = 2, binding = 0) coherent buffer StateBuffer {
 	vec4 box;
-	vec4 boxes[WORKGROUP_COUNT_TREE];
-
-	int semaphore;
-	int treeTop;
+	vec4 boxes[WORKGROUP_SIZE_BOX];
 } state;
-layout(set = 2, binding = 1) coherent buffer TreeBuffer {
-	ivec4 tree[];
+layout(set = 2, binding = 1) coherent buffer CountBuffer {
+	uint counts[];
 };
-layout(set = 2, binding = 2) coherent buffer IntBuffer {
-	ivec2 ints[];
+layout(set = 2, binding = 2) coherent buffer RadiusBuffer {
+	float radiuses[];
 };
+layout(set = 2, binding = 3) coherent buffer SrcBuffer {
+	uint sortedSrc[];
+};
+layout(set = 2, binding = 4, r32ui) coherent uniform uimage2D treeCount[11];
+layout(set = 2, binding = 5, rg32ui) coherent uniform uimage2D treeStart[11];
+layout(set = 2, binding = 6, rg32f) coherent uniform image2D treePos[11];
+layout(set = 2, binding = 7, r32f) coherent uniform image2D treeMass[11];
 
-layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x_id = 1, local_size_y_id = 1, local_size_z = 1) in;
 
 void main() {
-	// Exit if the invocation's index is too high
-	if(gl_GlobalInvocationID.x >= PARTICLE_COUNT)
-		return;
+    // Reset all image values
+    ivec2 ind = ivec2(gl_GlobalInvocationID.xy);
 
-	// Load the particle's info
-	vec2 pos = particlesPosIn[gl_GlobalInvocationID.x];
-	vec2 vel = particlesVelIn[gl_GlobalInvocationID.x];
-	vec2 accel = particlesVelOut[gl_GlobalInvocationID.x];
-
-	// Calculate the new position and velocity
-	vec2 newVel = vel + accel * (GRAVITATIONAL_CONST * SIMULATION_TIME);
-	vec2 newPos = pos + (vel + newVel) * (0.5 * SIMULATION_TIME);
-
-	// Write the particle's new info
-	particlesPosOut[gl_GlobalInvocationID.x] = newPos;
-	particlesVelOut[gl_GlobalInvocationID.x] = newVel;
+    imageStore(treeCount[0], ind, uvec4(0));
+    imageStore(treeStart[0], ind, uvec4(0));
+    imageStore(treePos[0], ind, vec4(0));
+    imageStore(treeMass[0], ind, vec4(0));
 }

@@ -6,20 +6,17 @@
 
 namespace gsim {
 	// Constants
-	const uint32_t WORKGROUP_SIZE_TREE = 128;
-	const uint32_t WORKGROUP_COUNT_TREE = 128;
+	const uint32_t WORKGROUP_SIZE_BOX = 128;
+	const uint32_t WORKGROUP_SIZE_TREE = 8;
 
 	// Structs
 	struct GSIM_ALIGNAS(sizeof(Vec2)) SimulationState {
 		Vec4 box;
-		Vec4 boxes[WORKGROUP_COUNT_TREE];
-
-		int32_t semaphore;
-		int32_t treeTop;
+		Vec4 boxes[WORKGROUP_SIZE_BOX];
 	};
 	struct SpecializationConstants {
+		uint32_t workgroupSizeBox;
 		uint32_t workgroupSizeTree;
-		uint32_t workgroupCountTree;
 		uint32_t workgroupSizeForce;
 
 		float simulationTime;
@@ -27,28 +24,21 @@ namespace gsim {
 		float softeningLenSqr;
 		float accuracyParameterSqr;
 
-		int32_t particleCount;
-		int32_t bufferSize;
+		uint32_t particleCount;
 	};
 
 	// Shader sources
-	const uint32_t BOX_SHADER_SOURCE[] {
-#include "Shaders/BoxShader.comp.u32"
+	const uint32_t BOX_SHADER_1_SOURCE[] {
+#include "Shaders/BoxShader1.comp.u32"
 	};
-	const uint32_t TREE_SHADER_SOURCE[] {
-#include "Shaders/TreeShader.comp.u32"
+	const uint32_t BOX_SHADER_2_SOURCE[] {
+#include "Shaders/BoxShader2.comp.u32"
 	};
-	const uint32_t CENTER_SHADER_SOURCE[] {
-#include "Shaders/CenterShader.comp.u32"
+	const uint32_t CLEAR_SHADER_SOURCE[] {
+#include "Shaders/ClearShader.comp.u32"
 	};
-	const uint32_t SORT_SHADER_SOURCE[] {
-#include "Shaders/SortShader.comp.u32"
-	};
-	const uint32_t FORCE_SHADER_SOURCE[] {
-#include "Shaders/ForceShader.comp.u32"	
-	};
-	const uint32_t ACCEL_SHADER_SOURCE[] {
-#include  "Shaders/AccelShader.comp.u32"
+	const uint32_t INIT_SHADER_SOURCE[] {
+#include "Shaders/InitShader.comp.u32"
 	};
 
 	// Internal helper functions
@@ -56,79 +46,55 @@ namespace gsim {
 		// Get the compute family index
 		uint32_t computeIndex = device->GetQueueFamilyIndices().computeIndex;
 
-		// Set the state buffer create info
-		VkBufferCreateInfo stateBufferInfo {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.size = sizeof(SimulationState),
-			.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-			.queueFamilyIndexCount = 1,
-			.pQueueFamilyIndices = &computeIndex
+		// Save the buffer sizes to an array
+		VkDeviceSize bufferSizes[] {
+			sizeof(SimulationState),                            // stateBuffer
+			sizeof(uint32_t) * particleSystem->GetBufferSize(), // countBuffer
+			sizeof(float) * particleSystem->GetBufferSize(),    // radiusBuffer
+			sizeof(uint32_t) * particleSystem->GetBufferSize(), // srcBuffer
 		};
 
-		// Create the state buffer
-		VkResult result = vkCreateBuffer(device->GetDevice(), &stateBufferInfo, nullptr, &stateBuffer);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation state buffer! Error code: %s", string_VkResult(result));
-		
-		// Set the tree buffer create info
-		VkBufferCreateInfo treeBufferInfo {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.size = particleSystem->GetBufferSize() * sizeof(Vec4i),
-			.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-			.queueFamilyIndexCount = 1,
-			.pQueueFamilyIndices = &computeIndex
-		};
-		
-		// Create the tree buffer
-		result = vkCreateBuffer(device->GetDevice(), &treeBufferInfo, nullptr, &treeBuffer);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation tree buffer! Error code: %s", string_VkResult(result));
+		// Create the buffers and get their infos
+		VkBuffer buffers[4];
+		VkMemoryRequirements memRequirements[4];
+		VkDeviceSize alignment = 1;
+		uint32_t memoryTypeBits = 0xffffffffu;
 
-		
-		// Set the interval buffer create info
-		VkBufferCreateInfo intBufferInfo {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.size = particleSystem->GetBufferSize() * sizeof(Vec2i),
-			.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-			.queueFamilyIndexCount = 1,
-			.pQueueFamilyIndices = &computeIndex
-		};
-		
-		// Create the box buffer
-		result = vkCreateBuffer(device->GetDevice(), &intBufferInfo, nullptr, &intBuffer);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation interval buffer! Error code: %s", string_VkResult(result));
-		
-		// Get the buffer memory requirements	
-		VkMemoryRequirements stateMemRequirements, treeMemRequirements, intMemRequirements;
+		for(uint32_t i = 0; i != 4; ++i) {
+			// Set the buffer info
+			VkBufferCreateInfo bufferInfo {
+				.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = 0,
+				.size = bufferSizes[i],
+				.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+				.queueFamilyIndexCount = 1,
+				.pQueueFamilyIndices = &computeIndex
+			};
 
-		vkGetBufferMemoryRequirements(device->GetDevice(), stateBuffer, &stateMemRequirements);
-		vkGetBufferMemoryRequirements(device->GetDevice(), treeBuffer, &treeMemRequirements);
-		vkGetBufferMemoryRequirements(device->GetDevice(), intBuffer, &intMemRequirements);
+			// Create the buffer
+			VkResult result = vkCreateBuffer(device->GetDevice(), &bufferInfo, nullptr, buffers + i);
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation buffers! Error code: %s", string_VkResult(result));
+			
+			// Get the buffer's memory requirements
+			vkGetBufferMemoryRequirements(device->GetDevice(), buffers[i], memRequirements + i);
 
-		// Get the max alignment
-		VkDeviceSize alignment = stateMemRequirements.alignment;
-		if(treeMemRequirements.alignment > alignment)
-			alignment = treeMemRequirements.alignment;
-		if(intMemRequirements.alignment > alignment)
-			alignment = intMemRequirements.alignment;
-		
-		// Align all buffer sizes to the max alignment
-		stateMemRequirements.size = (stateMemRequirements.size + alignment - 1) & ~(alignment - 1);
-		treeMemRequirements.size = (treeMemRequirements.size + alignment - 1) & ~(alignment - 1);
-		intMemRequirements.size = (intMemRequirements.size + alignment - 1) & ~(alignment - 1);
+			// Set the global memory's new info
+			if(memRequirements[i].alignment)
+				alignment = memRequirements[i].alignment;
+			memoryTypeBits &= memRequirements[i].memoryTypeBits;
+		}
 
-		// Get the memory type index
-		uint32_t memoryTypeBits = stateMemRequirements.memoryTypeBits & treeMemRequirements.memoryTypeBits & intMemRequirements.memoryTypeBits;
+		// Set the allocated memory's size
+		VkDeviceSize memorySize = 0;
+		for(uint32_t i = 0; i != 4; ++i) {
+			memRequirements[i].size = (memRequirements[i].size + alignment - 1) & ~(alignment - 1);
+			memorySize += memRequirements[i].size;
+		}
+
+		// Get the memory type's index
 		uint32_t memoryTypeIndex = device->GetMemoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryTypeBits);
 		if(memoryTypeIndex == UINT32_MAX)
 			GSIM_THROW_EXCEPTION("Failed to find supported memory type for Vulkan Barnes-Hut simulation buffers!");
@@ -137,29 +103,167 @@ namespace gsim {
 		VkMemoryAllocateInfo allocInfo {
 			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
 			.pNext = nullptr,
-			.allocationSize = stateMemRequirements.size + treeMemRequirements.size + intMemRequirements.size,
+			.allocationSize = memorySize,
 			.memoryTypeIndex = memoryTypeIndex
 		};
 
 		// Allocate the buffer memory
-		result = vkAllocateMemory(device->GetDevice(), &allocInfo, nullptr, &bufferMemory);
+		VkResult result = vkAllocateMemory(device->GetDevice(), &allocInfo, nullptr, &bufferMemory);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan Barnes-Hut buffer memory! Error code: %s", string_VkResult(result));
 		
-		// Bind the state buffer to its memory
-		result = vkBindBufferMemory(device->GetDevice(), stateBuffer, bufferMemory, 0);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to bind Vulkan Barnes-Hut state buffer to its memory! Error code: %s", string_VkResult(result));
+		// Bind the buffers to their memory
+		VkDeviceSize offset = 0;
+		for(uint32_t i = 0; i != 4; ++i) {
+			result = vkBindBufferMemory(device->GetDevice(), buffers[i], bufferMemory, offset);
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to bind Vulkan Barnes-Hut simulation buffers to their memory! Error code: %s", string_VkResult(result));
+
+			offset += memRequirements[i].size;
+		}
+
+		// Assign all buffers
+		stateBuffer = buffers[0];
+		countBuffer = buffers[1];
+		radiusBuffer = buffers[2];
+		srcBuffer = buffers[3];
+	}
+	void BarnesHutSimulation::CreateImages() {
+		// Get the compute family index
+		uint32_t computeIndex = device->GetQueueFamilyIndices().computeIndex;
+
+		// Save the image formats in an array
+		VkFormat imageFormats[] {
+			VK_FORMAT_R32_UINT,      // treeCountImage
+			VK_FORMAT_R32G32_UINT,   // treeStartImage
+			VK_FORMAT_R32G32_SFLOAT, // treePosImage
+			VK_FORMAT_R32_SFLOAT     // treeMassImage
+		};
+
+		// Create the images and get their infos
+		VkImage images[4];
+		VkMemoryRequirements memRequirements[4];
+		VkDeviceSize alignment = 1;
+		uint32_t memoryTypeBits = 0xffffffffu;
+
+		for(uint32_t i = 0; i != 4; ++i) {
+			// Set the image's info
+			VkImageCreateInfo imageInfo {
+				.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = 0,
+				.imageType = VK_IMAGE_TYPE_2D,
+				.format = imageFormats[i],
+				.extent = { 1024, 1024, 1 },
+				.mipLevels = 11,
+				.arrayLayers = 1,
+				.samples = VK_SAMPLE_COUNT_1_BIT,
+				.tiling = VK_IMAGE_TILING_OPTIMAL,
+				.usage = VK_IMAGE_USAGE_STORAGE_BIT,
+				.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+				.queueFamilyIndexCount = 1,
+				.pQueueFamilyIndices = &computeIndex,
+				.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+			};
+
+			// Create the image
+			VkResult result = vkCreateImage(device->GetDevice(), &imageInfo, nullptr, images + i);
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation storage images! Error code: %s", string_VkResult(result));
+			
+			// Get the image's memory requirements
+			vkGetImageMemoryRequirements(device->GetDevice(), images[i], memRequirements + i);
+
+			// Set the global memory's new info
+			if(memRequirements[i].alignment)
+				alignment = memRequirements[i].alignment;
+			memoryTypeBits &= memRequirements[i].memoryTypeBits;
+		}
+
+		// Set the allocated memory's size
+		VkDeviceSize memorySize = 0;
+		for(uint32_t i = 0; i != 4; ++i) {
+			memRequirements[i].size = (memRequirements[i].size + alignment - 1) & ~(alignment - 1);
+			memorySize += memRequirements[i].size;
+		}
+
+		// Get the memory type's index
+		uint32_t memoryTypeIndex = device->GetMemoryTypeIndex(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memoryTypeBits);
+		if(memoryTypeIndex == UINT32_MAX)
+			GSIM_THROW_EXCEPTION("Failed to find supported memory type for Vulkan Barnes-Hut simulation storage images!");
 		
-		// Bind the tree buffer to its memory
-		result = vkBindBufferMemory(device->GetDevice(), treeBuffer, bufferMemory, stateMemRequirements.size);
+		// Set the alloc info
+		VkMemoryAllocateInfo allocInfo {
+			.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+			.pNext = nullptr,
+			.allocationSize = memorySize,
+			.memoryTypeIndex = memoryTypeIndex
+		};
+
+		// Allocate the image memory
+		VkResult result = vkAllocateMemory(device->GetDevice(), &allocInfo, nullptr, &imageMemory);
 		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to bind Vulkan Barnes-Hut tree buffer to its memory! Error code: %s", string_VkResult(result));
+			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan Barnes-Hut storage image memory! Error code: %s", string_VkResult(result));
 		
-		// Bind the interval buffer to its memory
-		result = vkBindBufferMemory(device->GetDevice(), intBuffer, bufferMemory, stateMemRequirements.size + treeMemRequirements.size);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to bind Vulkan Barnes-Hut interval buffer to its memory! Error code: %s", string_VkResult(result));
+		// Bind the images to their memory
+		VkDeviceSize offset = 0;
+		for(uint32_t i = 0; i != 4; ++i) {
+			result = vkBindImageMemory(device->GetDevice(), images[i], imageMemory, offset);
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to bind Vulkan Barnes-Hut simulation storage images to their memory! Error code: %s", string_VkResult(result));
+
+			offset += memRequirements[i].size;
+		}
+
+		// Create the image views
+		VkImageView imageViews[4][11];
+
+		for(uint32_t i = 0; i != 4; ++i) {
+			for(uint32_t j = 0; j != 11; ++j) {
+				// Set the image view info
+				VkImageViewCreateInfo imageViewInfo {
+					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+					.pNext = nullptr,
+					.flags = 0,
+					.image = images[i],
+					.viewType = VK_IMAGE_VIEW_TYPE_2D,
+					.format = imageFormats[i],
+					.components = {
+						.r = VK_COMPONENT_SWIZZLE_IDENTITY,
+						.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+						.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+						.a = VK_COMPONENT_SWIZZLE_IDENTITY
+					},
+					.subresourceRange = {
+						.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+						.baseMipLevel = j,
+						.levelCount = 1,
+						.baseArrayLayer = 0,
+						.layerCount = 1
+					}
+				};
+
+				// Create the image view
+				result = vkCreateImageView(device->GetDevice(), &imageViewInfo, nullptr, &imageViews[i][j]);
+				if(result != VK_SUCCESS)
+					GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation storage image views! Error code: %s", string_VkResult(result));
+			}
+		}
+
+		// Save the created images and views
+		treeCountImage = images[0];
+		treeStartImage = images[1];
+		treePosImage = images[2];
+		treeMassImage = images[3];
+
+		for(uint32_t i = 0; i != 11; ++i)
+			treeCountImageViews[i] = imageViews[0][i];
+		for(uint32_t i = 0; i != 11; ++i)
+			treeStartImageViews[i] = imageViews[1][i];
+		for(uint32_t i = 0; i != 11; ++i)
+			treePosImageViews[i] = imageViews[2][i];
+		for(uint32_t i = 0; i != 11; ++i)
+			treeMassImageViews[i] = imageViews[3][i];
 	}
 	void BarnesHutSimulation::CreateDescriptorPool() {
 		// Set the paraticle descriptor set layout bindings
@@ -223,6 +327,41 @@ namespace gsim {
 				.descriptorCount = 1,
 				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 				.pImmutableSamplers = nullptr
+			},
+			{
+				.binding = 3,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.descriptorCount = 1,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
+			},
+			{
+				.binding = 4,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+				.descriptorCount = 11,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
+			},
+			{
+				.binding = 5,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+				.descriptorCount = 11,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
+			},
+			{
+				.binding = 6,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+				.descriptorCount = 11,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
+			},
+			{
+				.binding = 7,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+				.descriptorCount = 11,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
 			}
 		};
 
@@ -231,19 +370,25 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.bindingCount = 3,
+			.bindingCount = 8,
 			.pBindings = barnesHutSetLayoutBindings
 		};
 
-		// Create the Barnes-Hut descriptor set layout info
+		// Create the Barnes-Hut descriptor set layout
 		result = vkCreateDescriptorSetLayout(device->GetDevice(), &barnesHutSetLayoutInfo, nullptr, &barnesHutSetLayout);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut buffer descriptor set layout! Error code: %s", string_VkResult(result));
-
-		// Set the descriptor pool size
-		VkDescriptorPoolSize descriptorPoolSize {
-			.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			.descriptorCount = 12
+		
+		// Set the descriptor pool sizes
+		VkDescriptorPoolSize descriptorPoolSizes[] {
+			{
+				.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.descriptorCount = 13
+			},
+			{
+				.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+				.descriptorCount = 44
+			}
 		};
 
 		// Set the descriptor pool create info
@@ -252,15 +397,15 @@ namespace gsim {
 			.pNext = nullptr,
 			.flags = 0,
 			.maxSets = 4,
-			.poolSizeCount = 1,
-			.pPoolSizes = &descriptorPoolSize
+			.poolSizeCount = 2,
+			.pPoolSizes = descriptorPoolSizes
 		};
 
 		// Create the descriptor pool
 		result = vkCreateDescriptorPool(device->GetDevice(), &descriptorPoolInfo, nullptr, &descriptorPool);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan compute pipeline descriptor pool! Error code: %s", string_VkResult(result));
-		
+
 		// Set the descriptor set alloc info
 		VkDescriptorSetLayout setLayouts[] { particleSetLayout, particleSetLayout, particleSetLayout, barnesHutSetLayout };
 
@@ -278,156 +423,136 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan compute pipeline descriptor sets! Error code: %s", string_VkResult(result));
 		
 		// Set the descriptor buffer infos
-		VkDescriptorBufferInfo descriptorBufferInfos[12];
-		for(size_t i = 0, ind = 0; i != 3; ++i) {
-			descriptorBufferInfos[ind].buffer = particleSystem->GetBuffers()[i].posBuffer;
-			descriptorBufferInfos[ind].offset = 0;
-			descriptorBufferInfos[ind].range = VK_WHOLE_SIZE;
-			++ind;
-			descriptorBufferInfos[ind].buffer = particleSystem->GetBuffers()[i].velBuffer;
-			descriptorBufferInfos[ind].offset = 0;
-			descriptorBufferInfos[ind].range = VK_WHOLE_SIZE;
-			++ind;
-			descriptorBufferInfos[ind].buffer = particleSystem->GetBuffers()[i].massBuffer;
-			descriptorBufferInfos[ind].offset = 0;
-			descriptorBufferInfos[ind].range = VK_WHOLE_SIZE;
-			++ind;
+		VkBuffer buffers[] {
+			particleSystem->GetBuffers()[0].posBuffer, particleSystem->GetBuffers()[0].velBuffer, particleSystem->GetBuffers()[0].massBuffer,
+			particleSystem->GetBuffers()[1].posBuffer, particleSystem->GetBuffers()[1].velBuffer, particleSystem->GetBuffers()[1].massBuffer,
+			particleSystem->GetBuffers()[2].posBuffer, particleSystem->GetBuffers()[2].velBuffer, particleSystem->GetBuffers()[2].massBuffer,
+			stateBuffer, countBuffer, radiusBuffer, srcBuffer
+		};
+
+		VkDescriptorBufferInfo bufferInfos[13];
+		for(uint32_t i = 0; i != 13; ++i) {
+			bufferInfos[i] = {
+				.buffer = buffers[i],
+				.offset = 0,
+				.range = VK_WHOLE_SIZE
+			};
 		}
 
-		descriptorBufferInfos[9].buffer = stateBuffer;
-		descriptorBufferInfos[9].offset = 0;
-		descriptorBufferInfos[9].range = VK_WHOLE_SIZE;
+		// Set the descriptor image infos
+		VkImageView* imageViews[] { treeCountImageViews, treeStartImageViews, treePosImageViews, treeMassImageViews };
 
-		descriptorBufferInfos[10].buffer = treeBuffer;
-		descriptorBufferInfos[10].offset = 0;
-		descriptorBufferInfos[10].range = VK_WHOLE_SIZE;
+		VkDescriptorImageInfo imageInfos[44];
 
-		descriptorBufferInfos[11].buffer = intBuffer;
-		descriptorBufferInfos[11].offset = 0;
-		descriptorBufferInfos[11].range = VK_WHOLE_SIZE;
-
-		// Set the descriptor set writes
-		VkWriteDescriptorSet descriptorSetWrites[12];
-		for(size_t i = 0, ind = 0; i != 3; ++i) {
-			for(size_t j = 0; j != 3; ++j, ++ind) {
-				descriptorSetWrites[ind].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorSetWrites[ind].pNext = nullptr;
-				descriptorSetWrites[ind].dstSet = descriptorSets[i];
-				descriptorSetWrites[ind].dstBinding = j;
-				descriptorSetWrites[ind].dstArrayElement = 0;
-				descriptorSetWrites[ind].descriptorCount = 1;
-				descriptorSetWrites[ind].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-				descriptorSetWrites[ind].pImageInfo = nullptr;
-				descriptorSetWrites[ind].pBufferInfo = descriptorBufferInfos + ind;
-				descriptorSetWrites[ind].pTexelBufferView = nullptr;
+		for(uint32_t i = 0, ind = 0; i != 4; ++i) {
+			for(uint32_t j = 0; j != 11; ++j, ++ind) {
+				imageInfos[ind] = {
+					.sampler = VK_NULL_HANDLE,
+					.imageView = imageViews[i][j],
+					.imageLayout = VK_IMAGE_LAYOUT_GENERAL
+				};
 			}
 		}
-		for(size_t i = 0, ind = 9; i != 3; ++i, ++ind) {
-			descriptorSetWrites[ind].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorSetWrites[ind].pNext = nullptr;
-			descriptorSetWrites[ind].dstSet = descriptorSets[3];
-			descriptorSetWrites[ind].dstBinding = i;
-			descriptorSetWrites[ind].dstArrayElement = 0;
-			descriptorSetWrites[ind].descriptorCount = 1;
-			descriptorSetWrites[ind].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			descriptorSetWrites[ind].pImageInfo = nullptr;
-			descriptorSetWrites[ind].pBufferInfo = descriptorBufferInfos + ind;
-			descriptorSetWrites[ind].pTexelBufferView = nullptr;
+
+		// Set the descriptor set writes
+		VkWriteDescriptorSet setWrites[57];
+
+		for(uint32_t i = 0, ind = 0; i != 3; ++i) {
+			for(uint32_t j = 0; j != 3; ++j, ++ind) {
+				setWrites[ind] = {
+					.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+					.pNext = nullptr,
+					.dstSet = descriptorSets[i],
+					.dstBinding = j,
+					.dstArrayElement = 0,
+					.descriptorCount = 1,
+					.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+					.pImageInfo = nullptr,
+					.pBufferInfo = bufferInfos + ind,
+					.pTexelBufferView = nullptr
+				};
+			}
+		}
+		for(uint32_t i = 0, ind = 9; i != 4; ++i, ++ind) {
+			setWrites[ind] = {
+				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+				.pNext = nullptr,
+				.dstSet = descriptorSets[3],
+				.dstBinding = i,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.pImageInfo = nullptr,
+				.pBufferInfo = bufferInfos + ind,
+				.pTexelBufferView = nullptr
+			};
+		}
+		for(uint32_t i = 0, ind = 13; i != 4; ++i) {
+			for(uint32_t j = 0; j != 11; ++j, ++ind) {
+				setWrites[ind] = {
+					.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+					.pNext = nullptr,
+					.dstSet = descriptorSets[3],
+					.dstBinding = i + 4,
+					.dstArrayElement = j,
+					.descriptorCount = 1,
+					.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+					.pImageInfo = imageInfos + (i * 11 + j),
+					.pBufferInfo = nullptr,
+					.pTexelBufferView = nullptr
+				};
+			}
 		}
 
 		// Update the descriptor sets
-		vkUpdateDescriptorSets(device->GetDevice(), 12, descriptorSetWrites, 0, nullptr);
+		vkUpdateDescriptorSets(device->GetDevice(), 57, setWrites, 0, nullptr);
 	}
 	void BarnesHutSimulation::CreateShaderModules() {
-		// Set the box shader module info
-		VkShaderModuleCreateInfo boxShaderInfo {
-			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.codeSize = sizeof(BOX_SHADER_SOURCE),
-			.pCode = BOX_SHADER_SOURCE
+		// Save the shader sources and source sizes to arrays
+		const uint32_t* shaderSources[] {
+			BOX_SHADER_1_SOURCE,
+			BOX_SHADER_2_SOURCE,
+			CLEAR_SHADER_SOURCE,
+			INIT_SHADER_SOURCE
+		};
+		size_t shaderSourceSizes[] {
+			sizeof(BOX_SHADER_1_SOURCE),
+			sizeof(BOX_SHADER_2_SOURCE),
+			sizeof(CLEAR_SHADER_SOURCE),
+			sizeof(INIT_SHADER_SOURCE)
 		};
 
-		// Create the box shader module
-		VkResult result = vkCreateShaderModule(device->GetDevice(), &boxShaderInfo, nullptr, &boxShader);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut box shader module! Error code: %s", string_VkResult(result));
-		
-		// Set the tree shader module info
-		VkShaderModuleCreateInfo treeShaderInfo {
-			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.codeSize = sizeof(TREE_SHADER_SOURCE),
-			.pCode = TREE_SHADER_SOURCE
-		};
+		// Create all shader modules
+		VkShaderModule shaders[4];
 
-		// Create the tree shader module
-		result = vkCreateShaderModule(device->GetDevice(), &treeShaderInfo, nullptr, &treeShader);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut tree shader module! Error code: %s", string_VkResult(result));
+		for(uint32_t i = 0; i != 4; ++i) {
+			// Set the shader module create info
+			VkShaderModuleCreateInfo shaderInfo {
+				.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = 0,
+				.codeSize = shaderSourceSizes[i],
+				.pCode = shaderSources[i]
+			};
 
-		// Set the center shader module info
-		VkShaderModuleCreateInfo centerShaderInfo {
-			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.codeSize = sizeof(CENTER_SHADER_SOURCE),
-			.pCode = CENTER_SHADER_SOURCE
-		};
+			// Create the shader module
+			VkResult result = vkCreateShaderModule(device->GetDevice(), &shaderInfo, nullptr, shaders + i);
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut compute shader modules! Error code: %s", string_VkResult(result));
+		}
 
-		// Create the center shader module
-		result = vkCreateShaderModule(device->GetDevice(), &centerShaderInfo, nullptr, &centerShader);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut center shader module! Error code: %s", string_VkResult(result));
-		
-		// Set the sort shader module info
-		VkShaderModuleCreateInfo sortShaderInfo {
-			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.codeSize = sizeof(SORT_SHADER_SOURCE),
-			.pCode = SORT_SHADER_SOURCE
-		};
-
-		// Create the sort shader module
-		result = vkCreateShaderModule(device->GetDevice(), &sortShaderInfo, nullptr, &sortShader);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut sort shader module! Error code: %s", string_VkResult(result));
-		
-		// Set the force shader module info
-		VkShaderModuleCreateInfo forceShaderInfo {
-			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.codeSize = sizeof(FORCE_SHADER_SOURCE),
-			.pCode = FORCE_SHADER_SOURCE
-		};
-
-		// Create the force shader module
-		result = vkCreateShaderModule(device->GetDevice(), &forceShaderInfo, nullptr, &forceShader);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut force shader module! Error code: %s", string_VkResult(result));
-		
-		// Set the acceleration shader module info
-		VkShaderModuleCreateInfo accelShaderInfo {
-			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.codeSize = sizeof(ACCEL_SHADER_SOURCE),
-			.pCode = ACCEL_SHADER_SOURCE
-		};
-
-		// Create the acceleration shader module
-		result = vkCreateShaderModule(device->GetDevice(), &accelShaderInfo, nullptr, &accelShader);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut acceleration shader module! Error code: %s", string_VkResult(result));
+		// Save the created shader modules
+		boxShader1 = shaders[0];
+		boxShader2 = shaders[1];
+		clearShader = shaders[2];
+		initShader = shaders[3];
 	}
 	void BarnesHutSimulation::CreatePipelines() {
-		// Set the pipeline layout info
+		// Set the descriptor set layouts
 		VkDescriptorSetLayout setLayouts[] { particleSetLayout, particleSetLayout, barnesHutSetLayout };
 
-		VkPipelineLayoutCreateInfo pipelineLayoutInfo {
+		// Set the buffer pipeline layout create info
+		VkPipelineLayoutCreateInfo bufferPipelineLayoutInfo {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
@@ -437,34 +562,56 @@ namespace gsim {
 			.pPushConstantRanges = nullptr
 		};
 
-		// Create the pipeline layout
-		VkResult result = vkCreatePipelineLayout(device->GetDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout);
+		// Create the buffer pipeline layout
+		VkResult result = vkCreatePipelineLayout(device->GetDevice(), &bufferPipelineLayoutInfo, nullptr, &bufferPipelineLayout);
 		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut compite pipeline layout! Error code: %s", string_VkResult(result));
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation pipeline layouts! Error code: %s", string_VkResult(result));
 		
+		// Set the push constant range
+		VkPushConstantRange pushConstantRange {
+			.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+			.offset = 0,
+			.size = sizeof(uint32_t)
+		};
+
+		// Set the tree pipeline layout create info
+		VkPipelineLayoutCreateInfo treePipelineLayoutInfo {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.setLayoutCount = 3,
+			.pSetLayouts = setLayouts,
+			.pushConstantRangeCount = 1,
+			.pPushConstantRanges = &pushConstantRange
+		};
+
+		// Create the tree pipeline layout
+		result = vkCreatePipelineLayout(device->GetDevice(), &treePipelineLayoutInfo, nullptr, &treePipelineLayout);
+		if(result != VK_SUCCESS)
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation pipeline layouts! Error code: %s", string_VkResult(result));
+
 		// Set the specialization constants
 		SpecializationConstants specializationConst {
+			.workgroupSizeBox = WORKGROUP_SIZE_BOX,
 			.workgroupSizeTree = WORKGROUP_SIZE_TREE,
-			.workgroupCountTree = WORKGROUP_COUNT_TREE,
 			.workgroupSizeForce = device->GetSubgroupSize(),
 			.simulationTime = particleSystem->GetSimulationTime() * particleSystem->GetSimulationSpeed(),
 			.gravitationalConst = particleSystem->GetGravitationalConst(),
 			.softeningLenSqr = particleSystem->GetSofteningLen() * particleSystem->GetSofteningLen(),
 			.accuracyParameterSqr = particleSystem->GetAccuracyParameter() * particleSystem->GetAccuracyParameter(),
-			.particleCount = (int32_t)particleSystem->GetAlignedParticleCount(),
-			.bufferSize = (int32_t)particleSystem->GetBufferSize()
+			.particleCount = (uint32_t)particleSystem->GetAlignedParticleCount()
 		};
-	
+
 		// Set the specialization map entries
 		VkSpecializationMapEntry specializationEntries[] {
 			{
 				.constantID = 0,
-				.offset = offsetof(SpecializationConstants, workgroupSizeTree),
+				.offset = offsetof(SpecializationConstants, workgroupSizeBox),
 				.size = sizeof(uint32_t)
 			},
 			{
 				.constantID = 1,
-				.offset = offsetof(SpecializationConstants, workgroupCountTree),
+				.offset = offsetof(SpecializationConstants, workgroupSizeTree),
 				.size = sizeof(uint32_t)
 			},
 			{
@@ -496,141 +643,64 @@ namespace gsim {
 				.constantID = 7,
 				.offset = offsetof(SpecializationConstants, particleCount),
 				.size = sizeof(int32_t)
-			},
-			{
-				.constantID = 8,
-				.offset = offsetof(SpecializationConstants, bufferSize),
-				.size = sizeof(int32_t)
 			}
 		};
 
 		// Set the specialization info
 		VkSpecializationInfo specializationInfo {
-			.mapEntryCount = 9,
+			.mapEntryCount = 8,
 			.pMapEntries = specializationEntries,
 			.dataSize = sizeof(SpecializationConstants),
 			.pData = &specializationConst
 		};
 		
-		// Set the pipeline create infos
-		VkComputePipelineCreateInfo pipelineInfos[] {
-			{
-				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = 0,
-				.stage = {
-					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-					.pNext = nullptr,
-					.flags = 0,
-					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-					.module = boxShader,
-					.pName = "main",
-					.pSpecializationInfo = &specializationInfo
-				},
-				.layout = pipelineLayout,
-				.basePipelineHandle = VK_NULL_HANDLE,
-				.basePipelineIndex = -1
-			},
-			{
-				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = 0,
-				.stage = {
-					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-					.pNext = nullptr,
-					.flags = 0,
-					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-					.module = treeShader,
-					.pName = "main",
-					.pSpecializationInfo = &specializationInfo
-				},
-				.layout = pipelineLayout,
-				.basePipelineHandle = VK_NULL_HANDLE,
-				.basePipelineIndex = -1
-			},
-			{
-				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = 0,
-				.stage = {
-					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-					.pNext = nullptr,
-					.flags = 0,
-					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-					.module = centerShader,
-					.pName = "main",
-					.pSpecializationInfo = &specializationInfo
-				},
-				.layout = pipelineLayout,
-				.basePipelineHandle = VK_NULL_HANDLE,
-				.basePipelineIndex = -1
-			},
-			{
-				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = 0,
-				.stage = {
-					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-					.pNext = nullptr,
-					.flags = 0,
-					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-					.module = sortShader,
-					.pName = "main",
-					.pSpecializationInfo = &specializationInfo
-				},
-				.layout = pipelineLayout,
-				.basePipelineHandle = VK_NULL_HANDLE,
-				.basePipelineIndex = -1
-			},
-			{
-				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = 0,
-				.stage = {
-					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-					.pNext = nullptr,
-					.flags = 0,
-					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-					.module = forceShader,
-					.pName = "main",
-					.pSpecializationInfo = &specializationInfo
-				},
-				.layout = pipelineLayout,
-				.basePipelineHandle = VK_NULL_HANDLE,
-				.basePipelineIndex = -1
-			},
-			{
-				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = 0,
-				.stage = {
-					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-					.pNext = nullptr,
-					.flags = 0,
-					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-					.module = accelShader,
-					.pName = "main",
-					.pSpecializationInfo = &specializationInfo
-				},
-				.layout = pipelineLayout,
-				.basePipelineHandle = VK_NULL_HANDLE,
-				.basePipelineIndex = -1
-			}
+		// Save the shader modules and pipeline layouts in arrays
+		VkShaderModule shaders[] {
+			boxShader1,
+			boxShader2,
+			clearShader,
+			initShader
+		};
+		VkPipelineLayout pipelineLayouts[] {
+			bufferPipelineLayout, // boxPipeline1
+			bufferPipelineLayout, // boxPipeline2
+			bufferPipelineLayout, // clearPipeline
+			bufferPipelineLayout  // initPipeline
 		};
 
-		// Create the pipelines
-		VkPipeline pipelines[6];
+		// Set the pipeline create infos
+		VkComputePipelineCreateInfo pipelineInfos[4];
+		for(uint32_t i = 0; i != 4; ++i) {
+			pipelineInfos[i] = {
+				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = 0,
+				.stage = {
+					.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+					.pNext = nullptr,
+					.flags = 0,
+					.stage = VK_SHADER_STAGE_COMPUTE_BIT,
+					.module = shaders[i],
+					.pName = "main",
+					.pSpecializationInfo = &specializationInfo
+				},
+				.layout = pipelineLayouts[i],
+				.basePipelineHandle =  VK_NULL_HANDLE,
+				.basePipelineIndex = -1
+			};
+		}
 
-		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 6, pipelineInfos, nullptr, pipelines);
+		// Create the pipelines
+		VkPipeline pipelines[4];
+		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 4, pipelineInfos, nullptr, pipelines);
 		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut compute pipelines! Error code: %s", string_VkResult(result));
+			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation pipelines! Error code: %s", string_VkResult(result));
 		
-		boxPipeline = pipelines[0];
-		treePipeline = pipelines[1];
-		centerPipeline = pipelines[2];
-		sortPipeline = pipelines[3];
-		forcePipeline = pipelines[4];
-		accelPipeline = pipelines[5];
+		// Save the created pipelines
+		boxPipeline1 = pipelines[0];
+		boxPipeline2 = pipelines[1];
+		clearPipeline = pipelines[2];
+		initPipeline = pipelines[3];
 	}
 	void BarnesHutSimulation::CreateCommandObjects() {
 		// Set the simulation fence create info
@@ -659,7 +729,7 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan simulation command buffers! Error code: %s", string_VkResult(result));
 	}
-	void BarnesHutSimulation::ClearBuffers() {
+	void BarnesHutSimulation::SetImageLayouts() {
 		// Set the command buffer begin info
 		VkCommandBufferBeginInfo beginInfo {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -673,10 +743,39 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to begin recording Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
 		
-		// Clear the buffers
-		vkCmdFillBuffer(commandBuffers[0], stateBuffer, 0, VK_WHOLE_SIZE, 0);
-		vkCmdFillBuffer(commandBuffers[0], treeBuffer, 0, VK_WHOLE_SIZE, (uint32_t)-1);
-		vkCmdFillBuffer(commandBuffers[0], intBuffer, 0, VK_WHOLE_SIZE, (uint32_t)-1);
+		// Save the images to an array
+		VkImage images[] {
+			treeCountImage,
+			treeStartImage,
+			treePosImage,
+			treeMassImage
+		};
+
+		// Set the memory barriers
+		VkImageMemoryBarrier barriers[4];
+		for(uint32_t i = 0; i != 4; ++i) {
+			barriers[i] = {
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				.pNext = nullptr,
+				.srcAccessMask = 0,
+				.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+				.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+				.newLayout = VK_IMAGE_LAYOUT_GENERAL,
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.image = images[i],
+				.subresourceRange = {
+					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+					.baseMipLevel = 0,
+					.levelCount = 11,
+					.baseArrayLayer = 0,
+					.layerCount = 1
+				}
+			};
+		}
+
+		// Apply the layout transition
+		vkCmdPipelineBarrier(commandBuffers[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 4, barriers);
 
 		// End recording the command buffer
 		result = vkEndCommandBuffer(commandBuffers[0]);
@@ -715,11 +814,12 @@ namespace gsim {
 	BarnesHutSimulation::BarnesHutSimulation(VulkanDevice* device, ParticleSystem* particleSystem) : device(device), particleSystem(particleSystem) {
 		// Create all components
 		CreateBuffers();
+		CreateImages();
 		CreateDescriptorPool();
 		CreateShaderModules();
 		CreatePipelines();
 		CreateCommandObjects();
-		ClearBuffers();
+		SetImageLayouts();
 	}
 
 	void BarnesHutSimulation::RunSimulations(uint32_t simulationCount) {
@@ -761,48 +861,25 @@ namespace gsim {
 		for(uint32_t i = 0; i != simulationCount; ++i) {
 			// Bind the descriptor sets
 			VkDescriptorSet commandSets[] { descriptorSets[particleSystem->GetComputeInputIndex()], descriptorSets[particleSystem->GetComputeOutputIndex()], descriptorSets[3] };
-			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 3, commandSets, 0, nullptr);
+			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, bufferPipelineLayout, 0, 3, commandSets, 0, nullptr);
 
-			// Run the box shader
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, boxPipeline);
-			vkCmdDispatch(commandBuffer, WORKGROUP_COUNT_TREE, 1, 1);
-
-			// Add a pipeline barrier
+			// Clear the previous tree
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, clearPipeline);
+			vkCmdDispatch(commandBuffer, 1024 / WORKGROUP_SIZE_TREE, 1024 / WORKGROUP_SIZE_TREE, 1);
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
-			// Run the tree shader
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, treePipeline);
-			vkCmdDispatch(commandBuffer, WORKGROUP_COUNT_TREE, 1, 1);
-
-			// Add a pipeline barrier
+			// Calculate the bounding box
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, boxPipeline1);
+			vkCmdDispatch(commandBuffer, WORKGROUP_SIZE_BOX, 1, 1);
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
-			// Run the center shader
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, centerPipeline);
-			vkCmdDispatch(commandBuffer, WORKGROUP_COUNT_TREE, 1, 1);
-
-			// Add a pipeline barrier
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, boxPipeline2);
+			vkCmdDispatch(commandBuffer, 1, 1, 1);
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
-			// Run the sort shader
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, sortPipeline);
-			vkCmdDispatch(commandBuffer, WORKGROUP_COUNT_TREE, 1, 1);
-
-			// Add a pipeline barrier
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
-
-			// Run the force shader
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, forcePipeline);
-			vkCmdDispatch(commandBuffer, (particleSystem->GetParticleCount() + device->GetSubgroupSize() - 1) / device->GetSubgroupSize(), 1, 1);
-
-			// Add a pipeline barrier
-			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
-
-			// Run the acceleration shader
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, accelPipeline);
-			vkCmdDispatch(commandBuffer, (particleSystem->GetParticleCount() + WORKGROUP_SIZE_TREE - 1) / WORKGROUP_SIZE_TREE, 1, 1);
-
-			// Add a pipeline barrier
+			// Write the particle datas into the tree
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, initPipeline);
+			vkCmdDispatch(commandBuffer, WORKGROUP_SIZE_BOX, 1, 1);
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
 			// Get the new indices
@@ -851,33 +928,48 @@ namespace gsim {
 		vkFreeCommandBuffers(device->GetDevice(), device->GetComputeCommandPool(), 2, commandBuffers);
 		vkDestroyFence(device->GetDevice(), simulationFence, nullptr);
 
-		// Destroy all pipelines and the pipeline layout
-		vkDestroyPipeline(device->GetDevice(), boxPipeline, nullptr);
-		vkDestroyPipeline(device->GetDevice(), treePipeline, nullptr);
-		vkDestroyPipeline(device->GetDevice(), centerPipeline, nullptr);
-		vkDestroyPipeline(device->GetDevice(), sortPipeline, nullptr);
-		vkDestroyPipeline(device->GetDevice(), forcePipeline, nullptr);
-		vkDestroyPipeline(device->GetDevice(), accelPipeline, nullptr);
+		// Destroy the pipelines and their layouts
+		vkDestroyPipeline(device->GetDevice(), boxPipeline1, nullptr);
+		vkDestroyPipeline(device->GetDevice(), boxPipeline2, nullptr);
+		vkDestroyPipeline(device->GetDevice(), clearPipeline, nullptr);
+		vkDestroyPipeline(device->GetDevice(), initPipeline, nullptr);
 
-		vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);
+		vkDestroyPipelineLayout(device->GetDevice(), bufferPipelineLayout, nullptr);
+		vkDestroyPipelineLayout(device->GetDevice(), treePipelineLayout, nullptr);
 
-		// Destroy all shader modules
-		vkDestroyShaderModule(device->GetDevice(), boxShader, nullptr);
-		vkDestroyShaderModule(device->GetDevice(), treeShader, nullptr);
-		vkDestroyShaderModule(device->GetDevice(), centerShader, nullptr);
-		vkDestroyShaderModule(device->GetDevice(), sortShader, nullptr);
-		vkDestroyShaderModule(device->GetDevice(), forceShader, nullptr);
-		vkDestroyShaderModule(device->GetDevice(), accelShader, nullptr);
+		// Destroy the shader modules
+		vkDestroyShaderModule(device->GetDevice(), boxShader1, nullptr);
+		vkDestroyShaderModule(device->GetDevice(), boxShader2, nullptr);
+		vkDestroyShaderModule(device->GetDevice(), clearShader, nullptr);
+		vkDestroyShaderModule(device->GetDevice(), initShader, nullptr);
 
-		// Destroy the descriptor pool and all its components
+		// Destroy the descriptor pool and its set layouts
 		vkDestroyDescriptorPool(device->GetDevice(), descriptorPool, nullptr);
 		vkDestroyDescriptorSetLayout(device->GetDevice(), particleSetLayout, nullptr);
 		vkDestroyDescriptorSetLayout(device->GetDevice(), barnesHutSetLayout, nullptr);
 
-		// Destroy all created buffers and free the used memory
+		// Destroy the images and their image views and free the image memory
+		vkDestroyImage(device->GetDevice(), treeCountImage, nullptr);
+		vkDestroyImage(device->GetDevice(), treeStartImage, nullptr);
+		vkDestroyImage(device->GetDevice(), treePosImage, nullptr);
+		vkDestroyImage(device->GetDevice(), treeMassImage, nullptr);
+
+		for(uint32_t i = 0; i != 11; ++i)
+			vkDestroyImageView(device->GetDevice(), treeCountImageViews[i], nullptr);
+		for(uint32_t i = 0; i != 11; ++i)
+			vkDestroyImageView(device->GetDevice(), treeStartImageViews[i], nullptr);
+		for(uint32_t i = 0; i != 11; ++i)
+			vkDestroyImageView(device->GetDevice(), treePosImageViews[i], nullptr);
+		for(uint32_t i = 0; i != 11; ++i)
+			vkDestroyImageView(device->GetDevice(), treeMassImageViews[i], nullptr);
+		
+		vkFreeMemory(device->GetDevice(), imageMemory, nullptr);
+
+		// Destroy the buffers and free the buffer memory
 		vkDestroyBuffer(device->GetDevice(), stateBuffer, nullptr);
-		vkDestroyBuffer(device->GetDevice(), treeBuffer, nullptr);
-		vkDestroyBuffer(device->GetDevice(), intBuffer, nullptr);
+		vkDestroyBuffer(device->GetDevice(), countBuffer, nullptr);
+		vkDestroyBuffer(device->GetDevice(), radiusBuffer, nullptr);
+		vkDestroyBuffer(device->GetDevice(), srcBuffer, nullptr);
 
 		vkFreeMemory(device->GetDevice(), bufferMemory, nullptr);
 	}

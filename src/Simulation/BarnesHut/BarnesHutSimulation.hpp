@@ -55,39 +55,50 @@ namespace gsim {
 		~BarnesHutSimulation();
 	private:
 		void CreateBuffers();
+		void CreateImages();
 		void CreateDescriptorPool();
 		void CreateShaderModules();
 		void CreatePipelines();
 		void CreateCommandObjects();
-		void ClearBuffers();
+		void SetImageLayouts();
 
 		VulkanDevice* device;
 		ParticleSystem* particleSystem;
 
 		VkBuffer stateBuffer;
-		VkBuffer treeBuffer;
-		VkBuffer intBuffer;
+		VkBuffer countBuffer;
+		VkBuffer radiusBuffer;
+		VkBuffer srcBuffer;
 		VkDeviceMemory bufferMemory;
+
+		VkImage treeCountImage;
+		VkImage treeStartImage;
+		VkImage treePosImage;
+		VkImage treeMassImage;
+		VkDeviceMemory imageMemory;
+
+		VkImageView treeCountImageViews[11];
+		VkImageView treeStartImageViews[11];
+		VkImageView treePosImageViews[11];
+		VkImageView treeMassImageViews[11];
 
 		VkDescriptorSetLayout particleSetLayout;
 		VkDescriptorSetLayout barnesHutSetLayout;
 		VkDescriptorPool descriptorPool;
 		VkDescriptorSet descriptorSets[4];
 
-		VkShaderModule boxShader;
-		VkShaderModule treeShader;
-		VkShaderModule centerShader;
-		VkShaderModule sortShader;
-		VkShaderModule forceShader;
-		VkShaderModule accelShader;
+		VkShaderModule boxShader1;
+		VkShaderModule boxShader2;
+		VkShaderModule clearShader;
+		VkShaderModule initShader;
 
-		VkPipelineLayout pipelineLayout;
-		VkPipeline boxPipeline;
-		VkPipeline treePipeline;
-		VkPipeline centerPipeline;
-		VkPipeline sortPipeline;
-		VkPipeline forcePipeline;
-		VkPipeline accelPipeline;
+		VkPipelineLayout bufferPipelineLayout;
+		VkPipelineLayout treePipelineLayout;
+
+		VkPipeline boxPipeline1;
+		VkPipeline boxPipeline2;
+		VkPipeline clearPipeline;
+		VkPipeline initPipeline;
 
 		VkFence simulationFence;
 		VkCommandBuffer commandBuffers[2];

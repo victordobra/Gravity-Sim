@@ -1,0 +1,106 @@
+#version 440
+
+// Constants
+layout(constant_id = 0) const uint WORKGROUP_SIZE_BOX = 128;
+layout(constant_id = 1) const uint WORKGROUP_SIZE_TREE = 8;
+layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 32;
+
+layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
+layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
+layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
+layout(constant_id = 6) const float ACCURACY_PARAMETER_SQR = 1.0;
+
+layout(constant_id = 7) const int PARTICLE_COUNT = 0;
+layout(constant_id = 8) const int BUFFER_SIZE = 0;
+
+const uint STRIDE = WORKGROUP_SIZE_BOX * WORKGROUP_SIZE_BOX;
+
+// Particle buffers
+layout(set = 0, binding = 0) coherent buffer ParticlesPosInBuffer {
+	vec2 particlesPosIn[];
+};
+layout(set = 0, binding = 1) coherent buffer ParticlesVelInBuffer {
+	vec2 particlesVelIn[];
+};
+layout(set = 0, binding = 2) coherent buffer ParticlesMassInBuffer {
+	float particlesMassIn[];
+};
+
+layout(set = 1, binding = 0) coherent buffer ParticlesPosOutBuffer {
+	vec2 particlesPosOut[];
+};
+layout(set = 1, binding = 1) coherent buffer ParticlesVelOutBuffer {
+	vec2 particlesVelOut[];
+};
+layout(set = 1, binding = 2) coherent buffer ParticlesMassOutBuffer {
+	float particlesMassOut[];
+};
+
+// Simulation buffers
+layout(set = 2, binding = 0) coherent buffer StateBuffer {
+	vec4 box;
+	vec4 boxes[WORKGROUP_SIZE_BOX];
+} state;
+layout(set = 2, binding = 1) coherent buffer CountBuffer {
+	uint counts[];
+};
+layout(set = 2, binding = 2) coherent buffer RadiusBuffer {
+	float radiuses[];
+};
+layout(set = 2, binding = 3) coherent buffer SrcBuffer {
+	uint sortedSrc[];
+};
+layout(set = 2, binding = 4, r32ui) coherent uniform uimage2D treeCount[11];
+layout(set = 2, binding = 5, rg32ui) coherent uniform uimage2D treeStart[11];
+layout(set = 2, binding = 6, rg32f) coherent uniform image2D treePos[11];
+layout(set = 2, binding = 7, r32f) coherent uniform image2D treeMass[11];
+
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+	// Load the simulation box
+	vec4 box = state.box;
+
+	uint particleInd = gl_GlobalInvocationID.x;
+	vec2 pos;
+	float mass = 0;
+	ivec2 ind;
+
+	while(particleInd < PARTICLE_COUNT) {
+		// Check if a new particle needs to be loaded
+		if(mass == 0) {
+			// Load the current particle's position and mass
+			pos = particlesPosIn[particleInd];
+			mass = particlesMassIn[particleInd];
+
+			// Get the current particle's quadrant
+			vec2 relPos = pos - box.xy;
+			relPos *= vec2(1024) / (box.zw - box.xy);
+			ind = ivec2(relPos);
+
+			// Update the position for the center of mass
+			pos *= mass;
+		}
+
+		// Try to lock the specific quadrant
+		uint count = imageLoad(treeCount[0], ind).x;
+		if(count != uint(-1)) {
+			if(imageAtomicCompSwap(treeCount[0], ind, count, uint(-1)) == count) {
+				// Update the center of mass's info
+				imageStore(treePos[0], ind, imageLoad(treePos[0], ind) + vec4(pos, 0, 0));
+				imageStore(treeMass[0], ind, imageLoad(treeMass[0], ind) + vec4(mass, 0, 0, 0));
+
+				// Update both counters
+				imageStore(treeStart[0], ind, uvec4(0, count + 1, 0, 0));
+				memoryBarrier();
+				imageStore(treeCount[0], ind, uvec4(count + 1, 0, 0, 0));
+
+				// Ask for a new particle
+				mass = 0;
+				particleInd += STRIDE;
+			}
+		}
+
+		barrier();
+	}
+}
