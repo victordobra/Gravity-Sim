@@ -77,10 +77,10 @@ namespace gsim {
 		VkImage treeMassImage;
 		VkDeviceMemory imageMemory;
 
-		VkImageView treeCountImageViews[11];
-		VkImageView treeStartImageViews[11];
-		VkImageView treePosImageViews[11];
-		VkImageView treeMassImageViews[11];
+		VkImageView treeCountImageViews[10];
+		VkImageView treeStartImageViews[10];
+		VkImageView treePosImageViews[10];
+		VkImageView treeMassImageViews[10];
 
 		VkDescriptorSetLayout particleSetLayout;
 		VkDescriptorSetLayout barnesHutSetLayout;

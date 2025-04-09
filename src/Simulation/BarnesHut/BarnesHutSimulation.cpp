@@ -154,8 +154,8 @@ namespace gsim {
 				.flags = 0,
 				.imageType = VK_IMAGE_TYPE_2D,
 				.format = imageFormats[i],
-				.extent = { 1024, 1024, 1 },
-				.mipLevels = 11,
+				.extent = { 512, 512, 1 },
+				.mipLevels = 10,
 				.arrayLayers = 1,
 				.samples = VK_SAMPLE_COUNT_1_BIT,
 				.tiling = VK_IMAGE_TILING_OPTIMAL,
@@ -216,10 +216,10 @@ namespace gsim {
 		}
 
 		// Create the image views
-		VkImageView imageViews[4][11];
+		VkImageView imageViews[4][10];
 
 		for(uint32_t i = 0; i != 4; ++i) {
-			for(uint32_t j = 0; j != 11; ++j) {
+			for(uint32_t j = 0; j != 10; ++j) {
 				// Set the image view info
 				VkImageViewCreateInfo imageViewInfo {
 					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -256,13 +256,13 @@ namespace gsim {
 		treePosImage = images[2];
 		treeMassImage = images[3];
 
-		for(uint32_t i = 0; i != 11; ++i)
+		for(uint32_t i = 0; i != 10; ++i)
 			treeCountImageViews[i] = imageViews[0][i];
-		for(uint32_t i = 0; i != 11; ++i)
+		for(uint32_t i = 0; i != 10; ++i)
 			treeStartImageViews[i] = imageViews[1][i];
-		for(uint32_t i = 0; i != 11; ++i)
+		for(uint32_t i = 0; i != 10; ++i)
 			treePosImageViews[i] = imageViews[2][i];
-		for(uint32_t i = 0; i != 11; ++i)
+		for(uint32_t i = 0; i != 10; ++i)
 			treeMassImageViews[i] = imageViews[3][i];
 	}
 	void BarnesHutSimulation::CreateDescriptorPool() {
@@ -338,28 +338,28 @@ namespace gsim {
 			{
 				.binding = 4,
 				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.descriptorCount = 11,
+				.descriptorCount = 10,
 				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 				.pImmutableSamplers = nullptr
 			},
 			{
 				.binding = 5,
 				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.descriptorCount = 11,
+				.descriptorCount = 10,
 				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 				.pImmutableSamplers = nullptr
 			},
 			{
 				.binding = 6,
 				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.descriptorCount = 11,
+				.descriptorCount = 10,
 				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 				.pImmutableSamplers = nullptr
 			},
 			{
 				.binding = 7,
 				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.descriptorCount = 11,
+				.descriptorCount = 10,
 				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 				.pImmutableSamplers = nullptr
 			}
@@ -387,7 +387,7 @@ namespace gsim {
 			},
 			{
 				.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.descriptorCount = 44
+				.descriptorCount = 40
 			}
 		};
 
@@ -442,10 +442,10 @@ namespace gsim {
 		// Set the descriptor image infos
 		VkImageView* imageViews[] { treeCountImageViews, treeStartImageViews, treePosImageViews, treeMassImageViews };
 
-		VkDescriptorImageInfo imageInfos[44];
+		VkDescriptorImageInfo imageInfos[40];
 
 		for(uint32_t i = 0, ind = 0; i != 4; ++i) {
-			for(uint32_t j = 0; j != 11; ++j, ++ind) {
+			for(uint32_t j = 0; j != 10; ++j, ++ind) {
 				imageInfos[ind] = {
 					.sampler = VK_NULL_HANDLE,
 					.imageView = imageViews[i][j],
@@ -455,7 +455,7 @@ namespace gsim {
 		}
 
 		// Set the descriptor set writes
-		VkWriteDescriptorSet setWrites[57];
+		VkWriteDescriptorSet setWrites[53];
 
 		for(uint32_t i = 0, ind = 0; i != 3; ++i) {
 			for(uint32_t j = 0; j != 3; ++j, ++ind) {
@@ -488,7 +488,7 @@ namespace gsim {
 			};
 		}
 		for(uint32_t i = 0, ind = 13; i != 4; ++i) {
-			for(uint32_t j = 0; j != 11; ++j, ++ind) {
+			for(uint32_t j = 0; j != 10; ++j, ++ind) {
 				setWrites[ind] = {
 					.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 					.pNext = nullptr,
@@ -497,7 +497,7 @@ namespace gsim {
 					.dstArrayElement = j,
 					.descriptorCount = 1,
 					.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-					.pImageInfo = imageInfos + (i * 11 + j),
+					.pImageInfo = imageInfos + (i * 10 + j),
 					.pBufferInfo = nullptr,
 					.pTexelBufferView = nullptr
 				};
@@ -505,7 +505,7 @@ namespace gsim {
 		}
 
 		// Update the descriptor sets
-		vkUpdateDescriptorSets(device->GetDevice(), 57, setWrites, 0, nullptr);
+		vkUpdateDescriptorSets(device->GetDevice(), 53, setWrites, 0, nullptr);
 	}
 	void BarnesHutSimulation::CreateShaderModules() {
 		// Save the shader sources and source sizes to arrays
@@ -767,7 +767,7 @@ namespace gsim {
 				.subresourceRange = {
 					.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 					.baseMipLevel = 0,
-					.levelCount = 11,
+					.levelCount = 10,
 					.baseArrayLayer = 0,
 					.layerCount = 1
 				}
@@ -954,13 +954,13 @@ namespace gsim {
 		vkDestroyImage(device->GetDevice(), treePosImage, nullptr);
 		vkDestroyImage(device->GetDevice(), treeMassImage, nullptr);
 
-		for(uint32_t i = 0; i != 11; ++i)
+		for(uint32_t i = 0; i != 10; ++i)
 			vkDestroyImageView(device->GetDevice(), treeCountImageViews[i], nullptr);
-		for(uint32_t i = 0; i != 11; ++i)
+		for(uint32_t i = 0; i != 10; ++i)
 			vkDestroyImageView(device->GetDevice(), treeStartImageViews[i], nullptr);
-		for(uint32_t i = 0; i != 11; ++i)
+		for(uint32_t i = 0; i != 10; ++i)
 			vkDestroyImageView(device->GetDevice(), treePosImageViews[i], nullptr);
-		for(uint32_t i = 0; i != 11; ++i)
+		for(uint32_t i = 0; i != 10; ++i)
 			vkDestroyImageView(device->GetDevice(), treeMassImageViews[i], nullptr);
 		
 		vkFreeMemory(device->GetDevice(), imageMemory, nullptr);

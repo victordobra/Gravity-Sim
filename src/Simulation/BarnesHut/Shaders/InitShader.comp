@@ -50,10 +50,10 @@ layout(set = 2, binding = 2) coherent buffer RadiusBuffer {
 layout(set = 2, binding = 3) coherent buffer SrcBuffer {
 	uint sortedSrc[];
 };
-layout(set = 2, binding = 4, r32ui) coherent uniform uimage2D treeCount[11];
-layout(set = 2, binding = 5, rg32ui) coherent uniform uimage2D treeStart[11];
-layout(set = 2, binding = 6, rg32f) coherent uniform image2D treePos[11];
-layout(set = 2, binding = 7, r32f) coherent uniform image2D treeMass[11];
+layout(set = 2, binding = 4, r32ui) coherent uniform uimage2D treeCount[10];
+layout(set = 2, binding = 5, rg32ui) coherent uniform uimage2D treeStart[10];
+layout(set = 2, binding = 6, rg32f) coherent uniform image2D treePos[10];
+layout(set = 2, binding = 7, r32f) coherent uniform image2D treeMass[10];
 
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
