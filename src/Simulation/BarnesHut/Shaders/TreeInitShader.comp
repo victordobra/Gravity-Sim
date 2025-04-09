@@ -1,0 +1,95 @@
+#version 440
+
+// Constants
+layout(constant_id = 0) const uint WORKGROUP_SIZE_BOX = 128;
+layout(constant_id = 1) const uint WORKGROUP_SIZE_TREE = 8;
+layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 32;
+
+layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
+layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
+layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
+layout(constant_id = 6) const float ACCURACY_PARAMETER_SQR = 1.0;
+
+layout(constant_id = 7) const int PARTICLE_COUNT = 0;
+layout(constant_id = 8) const int BUFFER_SIZE = 0;
+
+// Simulation buffers
+layout(set = 0, binding = 0) coherent buffer StateBuffer {
+	vec4 box;
+	vec4 boxes[WORKGROUP_SIZE_BOX];
+} state;
+layout(set = 0, binding = 1) coherent buffer CountBuffer {
+	uint counts[];
+};
+layout(set = 0, binding = 2) coherent buffer RadiusBuffer {
+	float radiuses[];
+};
+layout(set = 0, binding = 3) coherent buffer SrcBuffer {
+	uint sortedSrc[];
+};
+layout(set = 0, binding = 4, r32ui) coherent uniform uimage2D treeCount[10];
+layout(set = 0, binding = 5, rg32ui) coherent uniform uimage2D treeStart[10];
+layout(set = 0, binding = 6, rg32f) coherent uniform image2D treePos[10];
+layout(set = 0, binding = 7, r32f) coherent uniform image2D treeMass[10];
+
+layout(local_size_x_id = 1, local_size_y_id = 1, local_size_z = 1) in;
+
+// Push constants
+layout(push_constant) uniform PushConstants {
+    uint height;
+} push;
+
+// Shared matrix
+vec2 sharedPos[WORKGROUP_SIZE_TREE << 1][WORKGROUP_SIZE_TREE << 1];
+float sharedMass[WORKGROUP_SIZE_TREE << 1][WORKGROUP_SIZE_TREE << 1];
+uint sharedNodeCount[WORKGROUP_SIZE_TREE << 1][WORKGROUP_SIZE_TREE << 1];
+uint sharedParticleCount[WORKGROUP_SIZE_TREE << 1][WORKGROUP_SIZE_TREE << 1];
+
+void main() {
+	// Calculate the new local indices for coalesced access
+	ivec2 localInd = ivec2((gl_LocalInvocationIndex >> 1) & (WORKGROUP_SIZE_TREE - 1), (gl_LocalInvocationID.y & ~1) + (gl_LocalInvocationID.x & 1));
+	ivec2 globalInd = localInd + ivec2(gl_WorkGroupID.xy * (WORKGROUP_SIZE_TREE << 1));
+
+    // Load the corresponding infos
+	sharedPos[localInd.x][localInd.y] = imageLoad(treePos[push.height], ivec2(globalInd)).xy;
+	sharedMass[localInd.x][localInd.y] = imageLoad(treeMass[push.height], ivec2(globalInd)).x;
+	sharedNodeCount[localInd.x][localInd.y] = imageLoad(treeCount[push.height], ivec2(globalInd)).x;
+	sharedParticleCount[localInd.x][localInd.y] = imageLoad(treeStart[push.height], ivec2(globalInd)).y;
+
+	sharedPos[localInd.x][localInd.y + WORKGROUP_SIZE_TREE] = imageLoad(treePos[push.height], ivec2(globalInd) + ivec2(0, WORKGROUP_SIZE_TREE)).xy;
+	sharedMass[localInd.x][localInd.y + WORKGROUP_SIZE_TREE] = imageLoad(treeMass[push.height], ivec2(globalInd) + ivec2(0, WORKGROUP_SIZE_TREE)).x;
+	sharedNodeCount[localInd.x][localInd.y + WORKGROUP_SIZE_TREE] = imageLoad(treeCount[push.height], ivec2(globalInd) + ivec2(0, WORKGROUP_SIZE_TREE)).x;
+	sharedParticleCount[localInd.x][localInd.y + WORKGROUP_SIZE_TREE] = imageLoad(treeStart[push.height], ivec2(globalInd) + ivec2(0, WORKGROUP_SIZE_TREE)).y;
+
+	sharedPos[localInd.x + WORKGROUP_SIZE_TREE][localInd.y] = imageLoad(treePos[push.height], ivec2(globalInd) + ivec2(WORKGROUP_SIZE_TREE, 0)).xy;
+	sharedMass[localInd.x + WORKGROUP_SIZE_TREE][localInd.y] = imageLoad(treeMass[push.height], ivec2(globalInd) + ivec2(WORKGROUP_SIZE_TREE, 0)).x;
+	sharedNodeCount[localInd.x + WORKGROUP_SIZE_TREE][localInd.y] = imageLoad(treeCount[push.height], ivec2(globalInd) + ivec2(WORKGROUP_SIZE_TREE, 0)).x;
+	sharedParticleCount[localInd.x + WORKGROUP_SIZE_TREE][localInd.y] = imageLoad(treeStart[push.height], ivec2(globalInd) + ivec2(WORKGROUP_SIZE_TREE, 0)).y;
+
+	sharedPos[localInd.x + WORKGROUP_SIZE_TREE][localInd.y + WORKGROUP_SIZE_TREE] = imageLoad(treePos[push.height], ivec2(globalInd) + ivec2(WORKGROUP_SIZE_TREE)).xy;
+	sharedMass[localInd.x + WORKGROUP_SIZE_TREE][localInd.y + WORKGROUP_SIZE_TREE] = imageLoad(treeMass[push.height], ivec2(globalInd) + ivec2(WORKGROUP_SIZE_TREE)).x;
+	sharedNodeCount[localInd.x + WORKGROUP_SIZE_TREE][localInd.y + WORKGROUP_SIZE_TREE] = imageLoad(treeCount[push.height], ivec2(globalInd) + ivec2(WORKGROUP_SIZE_TREE)).x;
+	sharedParticleCount[localInd.x + WORKGROUP_SIZE_TREE][localInd.y + WORKGROUP_SIZE_TREE] = imageLoad(treeStart[push.height], ivec2(globalInd) + ivec2(WORKGROUP_SIZE_TREE)).y;
+
+	memoryBarrierShared();
+	barrier();
+
+	// Apply the reduction to the loaded particle infos
+	ivec2 imageInd = localInd << 1;
+
+	vec2 newPos = sharedPos[imageInd.x][imageInd.y] + sharedPos[imageInd.x][imageInd.y + 1] + sharedPos[imageInd.x + 1][imageInd.y] + sharedPos[imageInd.x + 1][imageInd.y + 1];
+	float newMass = sharedMass[imageInd.x][imageInd.y] + sharedMass[imageInd.x][imageInd.y + 1] + sharedMass[imageInd.x + 1][imageInd.y] + sharedMass[imageInd.x + 1][imageInd.y + 1];
+	uint newNodeCount = sharedNodeCount[imageInd.x][imageInd.y] + sharedNodeCount[imageInd.x][imageInd.y + 1] + sharedNodeCount[imageInd.x + 1][imageInd.y] + sharedNodeCount[imageInd.x + 1][imageInd.y + 1];
+	uint newParticleCount = sharedParticleCount[imageInd.x][imageInd.y] + sharedParticleCount[imageInd.x][imageInd.y + 1] + sharedParticleCount[imageInd.x + 1][imageInd.y] + sharedParticleCount[imageInd.x + 1][imageInd.y + 1];
+
+	// Create a new node, if required
+	newNodeCount += uint(newParticleCount > 1);
+
+	// Write the new infos to the global image
+	globalInd = localInd + ivec2(gl_WorkGroupID.xy * WORKGROUP_SIZE_TREE);
+
+	imageStore(treePos[push.height + 1], globalInd, vec4(newPos, 0, 0));
+	imageStore(treeMass[push.height + 1], globalInd, vec4(newMass, 0, 0, 0));
+	imageStore(treeCount[push.height + 1], globalInd, uvec4(newNodeCount, 0, 0, 0));
+	imageStore(treeStart[push.height + 1], globalInd, uvec4(0, newParticleCount, 0, 0));
+}

@@ -75,7 +75,7 @@ void main() {
 
 			// Get the current particle's quadrant
 			vec2 relPos = pos - box.xy;
-			relPos *= vec2(1024) / (box.zw - box.xy);
+			relPos *= vec2(512) / (box.zw - box.xy);
 			ind = ivec2(relPos);
 
 			// Update the position for the center of mass

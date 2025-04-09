@@ -61,6 +61,7 @@ namespace gsim {
 		void CreatePipelines();
 		void CreateCommandObjects();
 		void SetImageLayouts();
+		void RecordSecondaryCommandBuffers();
 
 		VulkanDevice* device;
 		ParticleSystem* particleSystem;
@@ -91,6 +92,7 @@ namespace gsim {
 		VkShaderModule boxShader2;
 		VkShaderModule clearShader;
 		VkShaderModule initShader;
+		VkShaderModule treeInitShader;
 
 		VkPipelineLayout bufferPipelineLayout;
 		VkPipelineLayout treePipelineLayout;
@@ -99,9 +101,12 @@ namespace gsim {
 		VkPipeline boxPipeline2;
 		VkPipeline clearPipeline;
 		VkPipeline initPipeline;
+		VkPipeline treeInitPipeline;
 
 		VkFence simulationFence;
 		VkCommandBuffer commandBuffers[2];
 		uint32_t commandBufferIndex = 0;
+
+		VkCommandBuffer treeCommandBuffer;
 	};
 }
