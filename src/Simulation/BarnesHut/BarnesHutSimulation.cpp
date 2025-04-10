@@ -44,6 +44,9 @@ namespace gsim {
 	const uint32_t TREE_INIT_SHADER_SOURCE[] {
 #include "Shaders/TreeInitShader.comp.u32"
 	};
+	const uint32_t TREE_SORT_SHADER_SOURCE[] {
+#include "Shaders/TreeSortShader.comp.u32"
+	};
 
 	// Internal helper functions
 	void BarnesHutSimulation::CreateBuffers() {
@@ -467,20 +470,22 @@ namespace gsim {
 			BOX_SHADER_2_SOURCE,
 			CLEAR_SHADER_SOURCE,
 			INIT_SHADER_SOURCE,
-			TREE_INIT_SHADER_SOURCE
+			TREE_INIT_SHADER_SOURCE,
+			TREE_SORT_SHADER_SOURCE
 		};
 		size_t shaderSourceSizes[] {
 			sizeof(BOX_SHADER_1_SOURCE),
 			sizeof(BOX_SHADER_2_SOURCE),
 			sizeof(CLEAR_SHADER_SOURCE),
 			sizeof(INIT_SHADER_SOURCE),
-			sizeof(TREE_INIT_SHADER_SOURCE)
+			sizeof(TREE_INIT_SHADER_SOURCE),
+			sizeof(TREE_SORT_SHADER_SOURCE)
 		};
 
 		// Create all shader modules
-		VkShaderModule shaders[5];
+		VkShaderModule shaders[6];
 
-		for(uint32_t i = 0; i != 5; ++i) {
+		for(uint32_t i = 0; i != 6; ++i) {
 			// Set the shader module create info
 			VkShaderModuleCreateInfo shaderInfo {
 				.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -502,6 +507,7 @@ namespace gsim {
 		clearShader = shaders[2];
 		initShader = shaders[3];
 		treeInitShader = shaders[4];
+		treeSortShader = shaders[5];
 	}
 	void BarnesHutSimulation::CreatePipelines() {
 		// Set the descriptor set layouts
@@ -622,19 +628,21 @@ namespace gsim {
 			boxShader2,
 			clearShader,
 			initShader,
-			treeInitShader
+			treeInitShader,
+			treeSortShader
 		};
 		VkPipelineLayout pipelineLayouts[] {
 			bufferPipelineLayout, // boxPipeline1
 			bufferPipelineLayout, // boxPipeline2
 			bufferPipelineLayout, // clearPipeline
 			bufferPipelineLayout, // initPipeline
-			treePipelineLayout    // treeInitPipeline
+			treePipelineLayout,   // treeInitPipeline
+			treePipelineLayout    // treeSortPipeline
 		};
 
 		// Set the pipeline create infos
-		VkComputePipelineCreateInfo pipelineInfos[5];
-		for(uint32_t i = 0; i != 5; ++i) {
+		VkComputePipelineCreateInfo pipelineInfos[6];
+		for(uint32_t i = 0; i != 6; ++i) {
 			pipelineInfos[i] = {
 				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
 				.pNext = nullptr,
@@ -655,8 +663,8 @@ namespace gsim {
 		}
 
 		// Create the pipelines
-		VkPipeline pipelines[5];
-		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 5, pipelineInfos, nullptr, pipelines);
+		VkPipeline pipelines[6];
+		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 6, pipelineInfos, nullptr, pipelines);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation pipelines! Error code: %s", string_VkResult(result));
 		
@@ -666,6 +674,7 @@ namespace gsim {
 		clearPipeline = pipelines[2];
 		initPipeline = pipelines[3];
 		treeInitPipeline = pipelines[4];
+		treeSortPipeline = pipelines[5];
 	}
 	void BarnesHutSimulation::CreateCommandObjects() {
 		// Set the simulation fence create info
@@ -756,6 +765,21 @@ namespace gsim {
 
 			// Build the current height of the tree
 			vkCmdBindPipeline(treeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, treeInitPipeline);
+			vkCmdDispatch(treeCommandBuffer, workgroupCount, 1, 1);
+			vkCmdPipelineBarrier(treeCommandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+		}
+
+		// Record the tree sorting
+		for(uint32_t i = 0; i != 9; ++i) {
+			// Push the current depth
+			vkCmdPushConstants(treeCommandBuffer, treePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &i);
+
+			// Get the number of workgroups
+			uint32_t treeSize = 1 << (i << 1);
+			uint32_t workgroupCount = (treeSize + WORKGROUP_SIZE_TREE - 1) / WORKGROUP_SIZE_TREE;
+
+			// Build the current height of the tree
+			vkCmdBindPipeline(treeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, treeSortPipeline);
 			vkCmdDispatch(treeCommandBuffer, workgroupCount, 1, 1);
 			vkCmdPipelineBarrier(treeCommandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 		}
@@ -900,6 +924,7 @@ namespace gsim {
 		vkDestroyPipeline(device->GetDevice(), clearPipeline, nullptr);
 		vkDestroyPipeline(device->GetDevice(), initPipeline, nullptr);
 		vkDestroyPipeline(device->GetDevice(), treeInitPipeline, nullptr);
+		vkDestroyPipeline(device->GetDevice(), treeSortPipeline, nullptr);
 
 		vkDestroyPipelineLayout(device->GetDevice(), bufferPipelineLayout, nullptr);
 		vkDestroyPipelineLayout(device->GetDevice(), treePipelineLayout, nullptr);
@@ -910,6 +935,7 @@ namespace gsim {
 		vkDestroyShaderModule(device->GetDevice(), clearShader, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), initShader, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), treeInitShader, nullptr);
+		vkDestroyShaderModule(device->GetDevice(), treeSortShader, nullptr);
 
 		// Destroy the descriptor pool and its set layouts
 		vkDestroyDescriptorPool(device->GetDevice(), descriptorPool, nullptr);

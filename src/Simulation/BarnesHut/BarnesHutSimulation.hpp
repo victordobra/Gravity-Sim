@@ -87,6 +87,7 @@ namespace gsim {
 		VkShaderModule clearShader;
 		VkShaderModule initShader;
 		VkShaderModule treeInitShader;
+		VkShaderModule treeSortShader;
 
 		VkPipelineLayout bufferPipelineLayout;
 		VkPipelineLayout treePipelineLayout;
@@ -96,6 +97,7 @@ namespace gsim {
 		VkPipeline clearPipeline;
 		VkPipeline initPipeline;
 		VkPipeline treeInitPipeline;
+		VkPipeline treeSortPipeline;
 
 		VkFence simulationFence;
 		VkCommandBuffer commandBuffers[2];

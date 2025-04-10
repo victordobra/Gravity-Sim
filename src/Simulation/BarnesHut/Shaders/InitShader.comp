@@ -103,7 +103,7 @@ void main() {
 		atomicAdd(treeCounts[9].counts[ind][0], 1);
 		atomicAdd(treeCounts[9].counts[ind][1], 1);
 		atomicAdd(treePos[9].pos[ind][0], pos.x);
-		atomicAdd(treePos[9].pos[ind][1], pos.x);
+		atomicAdd(treePos[9].pos[ind][1], pos.y);
 		atomicAdd(treeMass[9].mass[ind], mass);
 
 		barrier();
