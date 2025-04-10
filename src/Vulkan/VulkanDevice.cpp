@@ -12,11 +12,11 @@
 
 namespace gsim {
 	// Constants
-	static const char* const REQUIRED_DEVICE_RENDERING_EXTENSIONS[] {
+	static const char* const REQUIRED_DEVICE_EXTENSIONS[] {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 		VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME
 	};
-	static const size_t REQUIRED_DEVICE_RENDERING_EXTENSION_COUNT = sizeof(REQUIRED_DEVICE_RENDERING_EXTENSIONS) / sizeof(const char*);
+	static const size_t REQUIRED_DEVICE_EXTENSION_COUNT = sizeof(REQUIRED_DEVICE_EXTENSIONS) / sizeof(const char*);
 
 	// Internal functions
 	static VulkanDevice::QueueFamilyIndices FindQueueFamilyIndices(VkPhysicalDevice physicalDevice, VulkanSurface* surface) {
@@ -121,39 +121,36 @@ namespace gsim {
 		// Get the physical device's full properties
 		vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
 
-		// Check for rendering support, if required
-		if(surface) {
-			// Get the number of supported extensions
-			uint32_t supportedExtensionCount;
-			vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &supportedExtensionCount, nullptr);
+		// Get the number of supported extensions
+		uint32_t supportedExtensionCount;
+		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &supportedExtensionCount, nullptr);
 
-			// Allocate the supported extension array
-			VkExtensionProperties* supportedExtensions = (VkExtensionProperties*)malloc(supportedExtensionCount * sizeof(VkExtensionProperties));
-			if(!supportedExtensions)
-				GSIM_THROW_EXCEPTION("Failed to allocate Vulkan supported device extensions array!");
+		// Allocate the supported extension array
+		VkExtensionProperties* supportedExtensions = (VkExtensionProperties*)malloc(supportedExtensionCount * sizeof(VkExtensionProperties));
+		if(!supportedExtensions)
+			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan supported device extensions array!");
+		
+		// Get all supported extensions
+		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &supportedExtensionCount, supportedExtensions);
+
+		// Check if all rendering extensions are supported
+		for(size_t i = 0; i != REQUIRED_DEVICE_EXTENSION_COUNT; ++i) {
+			// Check if the current extension is in the supported extensions array
+			const char* extension = REQUIRED_DEVICE_EXTENSIONS[i];
+			bool supported = false;
+
+			for(uint32_t j = 0; j != supportedExtensionCount && !supported; ++j)
+				supported = !strncmp(extension, supportedExtensions[j].extensionName, VK_MAX_EXTENSION_NAME_SIZE);
 			
-			// Get all supported extensions
-			vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &supportedExtensionCount, supportedExtensions);
-
-			// Check if all rendering extensions are supported
-			for(size_t i = 0; i != REQUIRED_DEVICE_RENDERING_EXTENSION_COUNT; ++i) {
-				// Check if the current extension is in the supported extensions array
-				const char* extension = REQUIRED_DEVICE_RENDERING_EXTENSIONS[i];
-				bool supported = false;
-
-				for(uint32_t j = 0; j != supportedExtensionCount && !supported; ++j)
-					supported = !strncmp(extension, supportedExtensions[j].extensionName, VK_MAX_EXTENSION_NAME_SIZE);
-				
-				// Exit the function if the extension is not supported
-				if(!supported) {
-					free(supportedExtensions);
-					return false;
-				}
+			// Exit the function if the extension is not supported
+			if(!supported) {
+				free(supportedExtensions);
+				return false;
 			}
-
-			// Free the supported extension array
-			free(supportedExtensions);
 		}
+
+		// Free the supported extension array
+		free(supportedExtensions);
 
 		// Get the device's queue family indices
 		VulkanDevice::QueueFamilyIndices indices = FindQueueFamilyIndices(physicalDevice, surface);
@@ -276,28 +273,35 @@ namespace gsim {
 			}
 		}
 
-		// Set the enabled extension array
-		uint32_t extensionCount;
-		const char* const* extensions;
-		if(surface) {
-			extensionCount = (uint32_t)REQUIRED_DEVICE_RENDERING_EXTENSION_COUNT;
-			extensions = REQUIRED_DEVICE_RENDERING_EXTENSIONS;
-		} else {
-			extensionCount = 0;
-			extensions = nullptr;
-		}
+		// Set the required float atomic features
+		VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFloatFeatures {
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT,
+			.pNext = nullptr,
+			.shaderBufferFloat32Atomics = VK_TRUE,
+    		.shaderBufferFloat32AtomicAdd = VK_TRUE,
+    		.shaderBufferFloat64Atomics = VK_FALSE,
+    		.shaderBufferFloat64AtomicAdd = VK_FALSE,
+    		.shaderSharedFloat32Atomics = VK_FALSE,
+    		.shaderSharedFloat32AtomicAdd = VK_FALSE,
+    		.shaderSharedFloat64Atomics = VK_FALSE,
+    		.shaderSharedFloat64AtomicAdd = VK_FALSE,
+    		.shaderImageFloat32Atomics = VK_FALSE,
+    		.shaderImageFloat32AtomicAdd = VK_FALSE,
+    		.sparseImageFloat32Atomics = VK_FALSE,
+    		.sparseImageFloat32AtomicAdd = VK_FALSE
+		};
 
 		// Set the device's create info
 		VkDeviceCreateInfo createInfo {
 			.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-			.pNext = nullptr,
+			.pNext = &atomicFloatFeatures,
 			.flags = 0,
 			.queueCreateInfoCount = queueInfoCount,
 			.pQueueCreateInfos = queueInfos,
 			.enabledLayerCount = 0,
 			.ppEnabledLayerNames = nullptr,
-			.enabledExtensionCount = extensionCount,
-			.ppEnabledExtensionNames = extensions,
+			.enabledExtensionCount = REQUIRED_DEVICE_EXTENSION_COUNT,
+			.ppEnabledExtensionNames = REQUIRED_DEVICE_EXTENSIONS,
 			.pEnabledFeatures = &features
 		};
 

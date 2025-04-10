@@ -55,12 +55,11 @@ namespace gsim {
 		~BarnesHutSimulation();
 	private:
 		void CreateBuffers();
-		void CreateImages();
+		void CreateTreeBuffers();
 		void CreateDescriptorPool();
 		void CreateShaderModules();
 		void CreatePipelines();
 		void CreateCommandObjects();
-		void SetImageLayouts();
 		void RecordSecondaryCommandBuffers();
 
 		VulkanDevice* device;
@@ -72,16 +71,11 @@ namespace gsim {
 		VkBuffer srcBuffer;
 		VkDeviceMemory bufferMemory;
 
-		VkImage treeCountImage;
-		VkImage treeStartImage;
-		VkImage treePosImage;
-		VkImage treeMassImage;
-		VkDeviceMemory imageMemory;
-
-		VkImageView treeCountImageViews[10];
-		VkImageView treeStartImageViews[10];
-		VkImageView treePosImageViews[10];
-		VkImageView treeMassImageViews[10];
+		VkBuffer treeCountBuffers[10];
+		VkBuffer treeStartBuffers[10];
+		VkBuffer treePosBuffers[10];
+		VkBuffer treeMassBuffers[10];
+		VkDeviceMemory treeBufferMemory;
 
 		VkDescriptorSetLayout particleSetLayout;
 		VkDescriptorSetLayout barnesHutSetLayout;

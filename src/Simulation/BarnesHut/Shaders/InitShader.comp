@@ -1,8 +1,10 @@
 #version 440
 
+#extension GL_EXT_shader_atomic_float : require
+
 // Constants
 layout(constant_id = 0) const uint WORKGROUP_SIZE_BOX = 128;
-layout(constant_id = 1) const uint WORKGROUP_SIZE_TREE = 8;
+layout(constant_id = 1) const uint WORKGROUP_SIZE_TREE = 64;
 layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 32;
 
 layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
@@ -10,8 +12,8 @@ layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
 layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
 layout(constant_id = 6) const float ACCURACY_PARAMETER_SQR = 1.0;
 
-layout(constant_id = 7) const int PARTICLE_COUNT = 0;
-layout(constant_id = 8) const int BUFFER_SIZE = 0;
+layout(constant_id = 7) const uint PARTICLE_COUNT = 0;
+layout(constant_id = 8) const uint TREE_SIZE = 0;
 
 const uint STRIDE = WORKGROUP_SIZE_BOX * WORKGROUP_SIZE_BOX;
 
@@ -50,10 +52,18 @@ layout(set = 2, binding = 2) coherent buffer RadiusBuffer {
 layout(set = 2, binding = 3) coherent buffer SrcBuffer {
 	uint sortedSrc[];
 };
-layout(set = 2, binding = 4, r32ui) coherent uniform uimage2D treeCount[10];
-layout(set = 2, binding = 5, rg32ui) coherent uniform uimage2D treeStart[10];
-layout(set = 2, binding = 6, rg32f) coherent uniform image2D treePos[10];
-layout(set = 2, binding = 7, r32f) coherent uniform image2D treeMass[10];
+layout(set = 2, binding = 4) coherent buffer TreeCountBuffer {
+	uvec2 counts[];
+} treeCounts[10];
+layout(set = 2, binding = 5) coherent buffer TreeStartBuffer {
+	uvec2 starts[];
+} treeStarts[10];
+layout(set = 2, binding = 6) coherent buffer TreePosBuffer {
+	vec2 pos[];
+} treePos[10];
+layout(set = 2, binding = 7) coherent buffer TreeMassBuffer {
+	float mass[];
+} treeMass[10];
 
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
@@ -61,45 +71,40 @@ void main() {
 	// Load the simulation box
 	vec4 box = state.box;
 
-	uint particleInd = gl_GlobalInvocationID.x;
-	vec2 pos;
-	float mass = 0;
-	ivec2 ind;
+	for(uint i = gl_GlobalInvocationID.x; i < PARTICLE_COUNT; i += STRIDE) {
+		// Load the current particle's position and mass
+		vec2 pos = particlesPosIn[i];
+		float mass = particlesMassIn[i];
 
-	while(particleInd < PARTICLE_COUNT) {
-		// Check if a new particle needs to be loaded
-		if(mass == 0) {
-			// Load the current particle's position and mass
-			pos = particlesPosIn[particleInd];
-			mass = particlesMassIn[particleInd];
+		// Get the current particle's quadrant
+		vec2 relPos = pos - box.xy;
+		relPos *= vec2(TREE_SIZE) / (box.zw - box.xy);
+		
+		uint indX = uint(relPos.x);
+		uint indY = uint(relPos.y);
 
-			// Get the current particle's quadrant
-			vec2 relPos = pos - box.xy;
-			relPos *= vec2(512) / (box.zw - box.xy);
-			ind = ivec2(relPos);
+		// Get the particle's coordinate in the buffer
+		indX = (indX | (indX << 8)) & 0x00ff00ff;
+		indX = (indX | (indX << 4)) & 0x0f0f0f0f;
+		indX = (indX | (indX << 2)) & 0x33333333;
+		indX = (indX | (indX << 1)) & 0x55555555;
 
-			// Update the position for the center of mass
-			pos *= mass;
-		}
+		indY = (indY | (indY << 8)) & 0x00ff00ff;
+		indY = (indY | (indY << 4)) & 0x0f0f0f0f;
+		indY = (indY | (indY << 2)) & 0x33333333;
+		indY = (indY | (indY << 1)) & 0x55555555;
 
-		// Try to lock the specific quadrant
-		uint count = imageLoad(treeCount[0], ind).x;
-		if(count != uint(-1)) {
-			if(imageAtomicCompSwap(treeCount[0], ind, count, uint(-1)) == count) {
-				// Update the center of mass's info
-				imageStore(treePos[0], ind, imageLoad(treePos[0], ind) + vec4(pos, 0, 0));
-				imageStore(treeMass[0], ind, imageLoad(treeMass[0], ind) + vec4(mass, 0, 0, 0));
+		uint ind = indX | (indY << 1);
 
-				// Update both counters
-				imageStore(treeStart[0], ind, uvec4(0, count + 1, 0, 0));
-				memoryBarrier();
-				imageStore(treeCount[0], ind, uvec4(count + 1, 0, 0, 0));
+		// Update the position for the center of mass
+		pos *= mass;
 
-				// Ask for a new particle
-				mass = 0;
-				particleInd += STRIDE;
-			}
-		}
+		// Update the node's info
+		atomicAdd(treeCounts[9].counts[ind][0], 1);
+		atomicAdd(treeCounts[9].counts[ind][1], 1);
+		atomicAdd(treePos[9].pos[ind][0], pos.x);
+		atomicAdd(treePos[9].pos[ind][1], pos.x);
+		atomicAdd(treeMass[9].mass[ind], mass);
 
 		barrier();
 	}

@@ -32,23 +32,23 @@ namespace gsim {
 		/// @brief The vector's W component.
 		float w;
 	};
-	/// @brief A two-dimensional vector of integers.
-	struct Vec2i {
+	/// @brief A two-dimensional vector of unsigned integers.
+	struct Vec2u {
 		/// @brief The vector's X component.
-		int32_t x;
+		uint32_t x;
 		/// @brief The vector's Y component.
-		int32_t y;
+		uint32_t y;
 	};
-	/// @brief A four-dimensional vector of integers.
-	struct Vec4i {
+	/// @brief A four-dimensional vector of unsigned integers.
+	struct Vec4u {
 		/// @brief The vector's X component.
-		int32_t x;
+		uint32_t x;
 		/// @brief The vector's Y component.
-		int32_t y;
+		uint32_t y;
 		/// @brief The vector's Z component.
-		int32_t z;
+		uint32_t z;
 		/// @brief The vector's W component.
-		int32_t w;
+		uint32_t w;
 	};
 
 	/// @brief A struct containing the relevand info about a particle.
