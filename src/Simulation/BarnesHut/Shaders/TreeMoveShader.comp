@@ -53,45 +53,35 @@ layout(push_constant) uniform PushConstants {
 	uint depth;
 } push;
 
-// Shared infos
-shared uvec2 sharedCounts[WORKGROUP_SIZE_TREE << 2];
-shared uvec2 sharedStarts[WORKGROUP_SIZE_TREE << 2];
-
 void main() {
 	// Check if the implementationțs index is in the given interval
 	uint treeSize = 1 << (push.depth << 1);
 	if(gl_GlobalInvocationID.x < treeSize) {
-		// Load the corresponding subregion's counts
-		uint stride = min(WORKGROUP_SIZE_TREE, treeSize);
-		uint childStart = (gl_WorkGroupID.x * WORKGROUP_SIZE_TREE) << 2;
+		// Load the node's info
+        uvec2 count = treeCounts[push.depth].counts[gl_GlobalInvocationID.x];
+        uvec2 start = treeStarts[push.depth].starts[gl_GlobalInvocationID.x];
+        vec2 pos = treePos[push.depth].pos[gl_GlobalInvocationID.x];
+        float mass = treeMass[push.depth].mass[gl_GlobalInvocationID.x];
 
-		for(uint inc = 0; inc != (stride << 2); inc += stride)
-			sharedCounts[gl_LocalInvocationID.x + inc] = treeCounts[push.depth + 1].counts[childStart + gl_LocalInvocationID.x + inc];
+        // Check if the current node exists
+        if(count.y > 1) {
+            // Update the center's position
+            pos /= mass;
 
-		barrier();
-		memoryBarrierShared();
+			// Calculate the radius
+			vec2 boxSize = state.box.zw - state.box.xy;
+			float radius = dot(boxSize, boxSize) * 0.5;
+			radius /= 1 << (push.depth << 1);
 
-        // Load the parent start and count
-        uvec2 parentStart = treeStarts[push.depth].starts[gl_GlobalInvocationID.x];
-		uvec2 parentCount = treeCounts[push.depth].counts[gl_GlobalInvocationID.x];
+            // Write the node's info
+            counts[start.y] = count.y;
+			radiuses[start.y] = radius;
+			nodePos[start.y] = pos;
+			nodeMass[start.y] = mass;
 
-		// Update the parent start, if required
-		if(parentCount.y > 1)
-			parentStart += uvec2(0, 1);
-		
-		// Calculate the child starts
-        uint childInd = gl_LocalInvocationID.x << 2;
-        uvec2 offset = parentStart;
-        for(uint i = 0; i != 4; ++i) {
-            sharedStarts[childInd + i] = offset;
-            offset += sharedCounts[childInd + i];
+			// Update the node start, if required
+			if(push.depth == 9)
+				treeStarts[push.depth].starts[gl_GlobalInvocationID.x] += uvec2(0, 1);
         }
-
-		barrier();
-		memoryBarrierShared();
-
-		// Write the new starts
-		for(uint inc = 0; inc != (stride << 2); inc += stride)
-            treeStarts[push.depth + 1].starts[childStart + gl_LocalInvocationID.x + inc] = sharedStarts[gl_LocalInvocationID.x + inc];
 	}
 }

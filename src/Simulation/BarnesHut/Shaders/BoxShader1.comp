@@ -48,19 +48,25 @@ layout(set = 2, binding = 1) coherent buffer CountBuffer {
 layout(set = 2, binding = 2) coherent buffer RadiusBuffer {
 	float radiuses[];
 };
-layout(set = 2, binding = 3) coherent buffer SrcBuffer {
+layout(set = 2, binding = 3) coherent buffer NodePosBuffer {
+    vec2 nodePos[];
+};
+layout(set = 2, binding = 4) coherent buffer NodeMassBuffer {
+    float nodeMass[];
+};
+layout(set = 2, binding = 5) coherent buffer SrcBuffer {
 	uint sortedSrc[];
 };
-layout(set = 2, binding = 4) coherent buffer TreeCountBuffer {
+layout(set = 2, binding = 6) coherent buffer TreeCountBuffer {
 	uvec2 counts[];
 } treeCounts[10];
-layout(set = 2, binding = 5) coherent buffer TreeStartBuffer {
+layout(set = 2, binding = 7) coherent buffer TreeStartBuffer {
 	uvec2 starts[];
 } treeStarts[10];
-layout(set = 2, binding = 6) coherent buffer TreePosBuffer {
+layout(set = 2, binding = 8) coherent buffer TreePosBuffer {
 	vec2 pos[];
 } treePos[10];
-layout(set = 2, binding = 7) coherent buffer TreeMassBuffer {
+layout(set = 2, binding = 9) coherent buffer TreeMassBuffer {
 	float mass[];
 } treeMass[10];
 

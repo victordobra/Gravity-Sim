@@ -155,7 +155,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.size = bufferSize * ((sizeof(Vec2) << 1) + sizeof(float)),
+			.size = alignedParticleCount * ((sizeof(Vec2) << 1) + sizeof(float)),
 			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 1,
@@ -207,20 +207,14 @@ namespace gsim {
 
 		for(size_t i = 0; i != alignedParticleCount; ++i, ++vec2Iter)
 			*vec2Iter = particles[i].pos;
-		for(size_t i = alignedParticleCount; i != bufferSize; ++i, ++vec2Iter)
-			*vec2Iter = { 0.0f, 0.0f };
 
 		for(size_t i = 0; i != alignedParticleCount; ++i, ++vec2Iter)
 			*vec2Iter = particles[i].vel;
-		for(size_t i = alignedParticleCount; i != bufferSize; ++i, ++vec2Iter)
-			*vec2Iter = { 0.0f, 0.0f };
 
 		float* floatIter = (float*)vec2Iter;
 
 		for(size_t i = 0; i != alignedParticleCount; ++i, ++floatIter)
 			*floatIter = particles[i].mass;
-		for(size_t i = alignedParticleCount; i != bufferSize; ++i, ++floatIter)
-			*floatIter = 0.0f;
 
 		// Unmap the staging buffer's memory
 		vkUnmapMemory(device->GetDevice(), stagingMemory);
@@ -230,7 +224,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.size = bufferSize * sizeof(Vec2),
+			.size = alignedParticleCount * sizeof(Vec2),
 			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			.sharingMode = (device->GetQueueFamilyIndexArraySize() == 1) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT,
 			.queueFamilyIndexCount = device->GetQueueFamilyIndexArraySize(),
@@ -242,7 +236,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.size = bufferSize * sizeof(float),
+			.size = alignedParticleCount * sizeof(float),
 			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			.sharingMode = (device->GetQueueFamilyIndexArraySize() == 1) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT,
 			.queueFamilyIndexCount = device->GetQueueFamilyIndexArraySize(),
@@ -346,17 +340,17 @@ namespace gsim {
 		VkBufferCopy posCopyRegion {
 			.srcOffset = 0,
 			.dstOffset = 0,
-			.size = bufferSize * sizeof(Vec2)
+			.size = alignedParticleCount * sizeof(Vec2)
 		};
 		VkBufferCopy velCopyRegion {
-			.srcOffset = bufferSize * sizeof(Vec2),
+			.srcOffset = alignedParticleCount * sizeof(Vec2),
 			.dstOffset = 0,
-			.size = bufferSize * sizeof(Vec2)
+			.size = alignedParticleCount * sizeof(Vec2)
 		};
 		VkBufferCopy massCopyRegion {
-			.srcOffset = bufferSize * (sizeof(Vec2) << 1),
+			.srcOffset = alignedParticleCount * (sizeof(Vec2) << 1),
 			.dstOffset = 0,
-			.size = bufferSize * sizeof(float)
+			.size = alignedParticleCount * sizeof(float)
 		};
 
 		// Transfer all particles from the staging buffer to all particle buffers
@@ -491,13 +485,6 @@ namespace gsim {
 		
 		// Set the aligned particle count
 		alignedParticleCount = (particleCount + particleCountAlignment - 1) & ~(particleCountAlignment - 1);
-		
-		// Set the buffer size
-		if(simulationAlgorithm == SIMULATION_ALGORITHM_DIRECT_SUM) {
-			bufferSize = alignedParticleCount;
-		} else {
-			bufferSize = (alignedParticleCount << 1) + 16384;
-		}
 
 		// Fill the remaining particle infos
 		for(size_t i = particleCount; i != alignedParticleCount; ++i)
@@ -535,13 +522,6 @@ namespace gsim {
 
 		// Set the aligned particle count
 		alignedParticleCount = (particleCount + particleCountAlignment - 1) & ~(particleCountAlignment - 1);
-		
-		// Set the buffer size
-		if(simulationAlgorithm == SIMULATION_ALGORITHM_DIRECT_SUM) {
-			bufferSize = alignedParticleCount;
-		} else {
-			bufferSize = (alignedParticleCount << 1) + 16384;
-		}
 
 		// Allocate the particle array
 		Particle* particles = (Particle*)malloc(alignedParticleCount * sizeof(Particle));

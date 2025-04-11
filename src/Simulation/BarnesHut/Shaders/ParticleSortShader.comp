@@ -72,11 +72,43 @@ layout(set = 2, binding = 9) coherent buffer TreeMassBuffer {
 layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 void main() {
-	// Reset all tree leaf values
-	for(uint i = gl_GlobalInvocationID.x; i < TREE_SIZE * TREE_SIZE; i += STRIDE) {
-		treeCounts[9].counts[i] = uvec2(0);
-		treeStarts[9].starts[i] = uvec2(0);
-		treePos[9].pos[i] = vec2(0);
-		treeMass[9].mass[i] = 0;
-	}
+	// Load the simulation box
+	vec4 box = state.box;
+
+	for(uint i = gl_GlobalInvocationID.x; i < PARTICLE_COUNT; i += STRIDE) {
+		// Load the current particle's position and mass
+		vec2 pos = particlesPosIn[i];
+		float mass = particlesMassIn[i];
+
+		// Get the current particle's quadrant
+		vec2 relPos = pos - box.xy;
+		relPos *= vec2(TREE_SIZE) / (box.zw - box.xy);
+		
+		uint indX = uint(relPos.x);
+		uint indY = uint(relPos.y);
+
+		// Get the particle's coordinate in the buffer
+		indX = (indX | (indX << 8)) & 0x00ff00ff;
+		indX = (indX | (indX << 4)) & 0x0f0f0f0f;
+		indX = (indX | (indX << 2)) & 0x33333333;
+		indX = (indX | (indX << 1)) & 0x55555555;
+
+		indY = (indY | (indY << 8)) & 0x00ff00ff;
+		indY = (indY | (indY << 4)) & 0x0f0f0f0f;
+		indY = (indY | (indY << 2)) & 0x33333333;
+		indY = (indY | (indY << 1)) & 0x55555555;
+
+		uint ind = indX | (indY << 1);
+
+        // Write the source index
+        uint dstInd = atomicAdd(treeStarts[9].starts[ind].x, 1);
+        sortedSrc[dstInd] = i;
+
+        // Write the particle's info to the sorted tree
+        dstInd = atomicAdd(treeStarts[9].starts[ind].y, 1);
+        counts[dstInd] = 1;
+        radiuses[dstInd] = 0;
+        nodePos[dstInd] = pos;
+        nodeMass[dstInd] = mass;
+    }
 }

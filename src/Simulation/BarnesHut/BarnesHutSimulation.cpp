@@ -41,8 +41,14 @@ namespace gsim {
 	const uint32_t INIT_SHADER_SOURCE[] {
 #include "Shaders/InitShader.comp.u32"
 	};
+	const uint32_t PARTICLE_SORT_SHADER_SOURCE[] {
+#include "Shaders/ParticleSortShader.comp.u32"
+	};
 	const uint32_t TREE_INIT_SHADER_SOURCE[] {
 #include "Shaders/TreeInitShader.comp.u32"
+	};
+	const uint32_t TREE_MOVE_SHADER_SOURCE[] {
+#include "Shaders/TreeMoveShader.comp.u32"
 	};
 	const uint32_t TREE_SORT_SHADER_SOURCE[] {
 #include "Shaders/TreeSortShader.comp.u32"
@@ -53,21 +59,26 @@ namespace gsim {
 		// Get the compute family index
 		uint32_t computeIndex = device->GetQueueFamilyIndices().computeIndex;
 
+		// Calculate the required buffer capacity
+		VkDeviceSize bufferCap = particleSystem->GetAlignedParticleCount() + 349525;
+
 		// Save the buffer sizes to an array
 		VkDeviceSize bufferSizes[] {
-			sizeof(SimulationState),                            // stateBuffer
-			sizeof(uint32_t) * particleSystem->GetBufferSize(), // countBuffer
-			sizeof(float) * particleSystem->GetBufferSize(),    // radiusBuffer
-			sizeof(uint32_t) * particleSystem->GetBufferSize(), // srcBuffer
+			sizeof(SimulationState),      // stateBuffer
+			sizeof(uint32_t) * bufferCap, // countBuffer
+			sizeof(float) * bufferCap,    // radiusBuffer
+			sizeof(Vec2) * bufferCap,     // nodePosBuffer
+			sizeof(float) * bufferCap,    // nodeMassBuffer
+			sizeof(uint32_t) * bufferCap  // srcBuffer
 		};
 
 		// Create the buffers and get their infos
-		VkBuffer buffers[4];
-		VkMemoryRequirements memRequirements[4];
+		VkBuffer buffers[6];
+		VkMemoryRequirements memRequirements[6];
 		VkDeviceSize alignment = 1;
 		uint32_t memoryTypeBits = 0xffffffffu;
 
-		for(uint32_t i = 0; i != 4; ++i) {
+		for(uint32_t i = 0; i != 6; ++i) {
 			// Set the buffer info
 			VkBufferCreateInfo bufferInfo {
 				.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -96,7 +107,7 @@ namespace gsim {
 
 		// Set the allocated memory's size
 		VkDeviceSize memorySize = 0;
-		for(uint32_t i = 0; i != 4; ++i) {
+		for(uint32_t i = 0; i != 6; ++i) {
 			memRequirements[i].size = (memRequirements[i].size + alignment - 1) & ~(alignment - 1);
 			memorySize += memRequirements[i].size;
 		}
@@ -121,7 +132,7 @@ namespace gsim {
 		
 		// Bind the buffers to their memory
 		VkDeviceSize offset = 0;
-		for(uint32_t i = 0; i != 4; ++i) {
+		for(uint32_t i = 0; i != 6; ++i) {
 			result = vkBindBufferMemory(device->GetDevice(), buffers[i], bufferMemory, offset);
 			if(result != VK_SUCCESS)
 				GSIM_THROW_EXCEPTION("Failed to bind Vulkan Barnes-Hut simulation buffers to their memory! Error code: %s", string_VkResult(result));
@@ -133,7 +144,9 @@ namespace gsim {
 		stateBuffer = buffers[0];
 		countBuffer = buffers[1];
 		radiusBuffer = buffers[2];
-		srcBuffer = buffers[3];
+		nodePosBuffer = buffers[3];
+		nodeMassBuffer = buffers[4];
+		srcBuffer = buffers[5];
 	}
 	void BarnesHutSimulation::CreateTreeBuffers() {
 		// Get the compute family index
@@ -300,14 +313,14 @@ namespace gsim {
 			{
 				.binding = 4,
 				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				.descriptorCount = 10,
+				.descriptorCount = 1,
 				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 				.pImmutableSamplers = nullptr
 			},
 			{
 				.binding = 5,
 				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-				.descriptorCount = 10,
+				.descriptorCount = 1,
 				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 				.pImmutableSamplers = nullptr
 			},
@@ -324,6 +337,20 @@ namespace gsim {
 				.descriptorCount = 10,
 				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
 				.pImmutableSamplers = nullptr
+			},
+			{
+				.binding = 8,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.descriptorCount = 10,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
+			},
+			{
+				.binding = 9,
+				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+				.descriptorCount = 10,
+				.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+				.pImmutableSamplers = nullptr
 			}
 		};
 
@@ -332,7 +359,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.bindingCount = 8,
+			.bindingCount = 10,
 			.pBindings = barnesHutSetLayoutBindings
 		};
 
@@ -344,7 +371,7 @@ namespace gsim {
 		// Set the descriptor pool size
 		VkDescriptorPoolSize descriptorPoolSize {
 			.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			.descriptorCount = 53
+			.descriptorCount = 55
 		};
 
 		// Set the descriptor pool create info
@@ -383,11 +410,11 @@ namespace gsim {
 			particleSystem->GetBuffers()[0].posBuffer, particleSystem->GetBuffers()[0].velBuffer, particleSystem->GetBuffers()[0].massBuffer,
 			particleSystem->GetBuffers()[1].posBuffer, particleSystem->GetBuffers()[1].velBuffer, particleSystem->GetBuffers()[1].massBuffer,
 			particleSystem->GetBuffers()[2].posBuffer, particleSystem->GetBuffers()[2].velBuffer, particleSystem->GetBuffers()[2].massBuffer,
-			stateBuffer, countBuffer, radiusBuffer, srcBuffer
+			stateBuffer, countBuffer, radiusBuffer, nodePosBuffer, nodeMassBuffer, srcBuffer
 		};
 
-		VkDescriptorBufferInfo bufferInfos[53];
-		for(uint32_t i = 0; i != 13; ++i) {
+		VkDescriptorBufferInfo bufferInfos[55];
+		for(uint32_t i = 0; i != 15; ++i) {
 			bufferInfos[i] = {
 				.buffer = buffers[i],
 				.offset = 0,
@@ -400,7 +427,7 @@ namespace gsim {
 			treeCountBuffers, treeStartBuffers, treePosBuffers, treeMassBuffers
 		};
 
-		for(uint32_t i = 0, ind = 13; i != 4; ++i) {
+		for(uint32_t i = 0, ind = 15; i != 4; ++i) {
 			for(uint32_t j = 0; j != 10; ++j, ++ind) {
 				bufferInfos[ind] = {
 					.buffer = treeBuffers[i][j],
@@ -411,7 +438,7 @@ namespace gsim {
 		}
 
 		// Set the descriptor set writes
-		VkWriteDescriptorSet setWrites[53];
+		VkWriteDescriptorSet setWrites[55];
 
 		for(uint32_t i = 0, ind = 0; i != 3; ++i) {
 			for(uint32_t j = 0; j != 3; ++j, ++ind) {
@@ -429,7 +456,7 @@ namespace gsim {
 				};
 			}
 		}
-		for(uint32_t i = 0, ind = 9; i != 4; ++i, ++ind) {
+		for(uint32_t i = 0, ind = 9; i != 6; ++i, ++ind) {
 			setWrites[ind] = {
 				.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 				.pNext = nullptr,
@@ -443,13 +470,13 @@ namespace gsim {
 				.pTexelBufferView = nullptr
 			};
 		}
-		for(uint32_t i = 0, ind = 13; i != 4; ++i) {
+		for(uint32_t i = 0, ind = 15; i != 4; ++i) {
 			for(uint32_t j = 0; j != 10; ++j, ++ind) {
 				setWrites[ind] = {
 					.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 					.pNext = nullptr,
 					.dstSet = descriptorSets[3],
-					.dstBinding = i + 4,
+					.dstBinding = i + 6,
 					.dstArrayElement = j,
 					.descriptorCount = 1,
 					.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -461,7 +488,7 @@ namespace gsim {
 		}
 
 		// Update the descriptor sets
-		vkUpdateDescriptorSets(device->GetDevice(), 53, setWrites, 0, nullptr);
+		vkUpdateDescriptorSets(device->GetDevice(), 55, setWrites, 0, nullptr);
 	}
 	void BarnesHutSimulation::CreateShaderModules() {
 		// Save the shader sources and source sizes to arrays
@@ -470,7 +497,9 @@ namespace gsim {
 			BOX_SHADER_2_SOURCE,
 			CLEAR_SHADER_SOURCE,
 			INIT_SHADER_SOURCE,
+			PARTICLE_SORT_SHADER_SOURCE,
 			TREE_INIT_SHADER_SOURCE,
+			TREE_MOVE_SHADER_SOURCE,
 			TREE_SORT_SHADER_SOURCE
 		};
 		size_t shaderSourceSizes[] {
@@ -478,14 +507,16 @@ namespace gsim {
 			sizeof(BOX_SHADER_2_SOURCE),
 			sizeof(CLEAR_SHADER_SOURCE),
 			sizeof(INIT_SHADER_SOURCE),
+			sizeof(PARTICLE_SORT_SHADER_SOURCE),
 			sizeof(TREE_INIT_SHADER_SOURCE),
+			sizeof(TREE_MOVE_SHADER_SOURCE),
 			sizeof(TREE_SORT_SHADER_SOURCE)
 		};
 
 		// Create all shader modules
-		VkShaderModule shaders[6];
+		VkShaderModule shaders[8];
 
-		for(uint32_t i = 0; i != 6; ++i) {
+		for(uint32_t i = 0; i != 8; ++i) {
 			// Set the shader module create info
 			VkShaderModuleCreateInfo shaderInfo {
 				.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -506,8 +537,10 @@ namespace gsim {
 		boxShader2 = shaders[1];
 		clearShader = shaders[2];
 		initShader = shaders[3];
-		treeInitShader = shaders[4];
-		treeSortShader = shaders[5];
+		particleSortShader = shaders[4];
+		treeInitShader = shaders[5];
+		treeMoveShader = shaders[6];
+		treeSortShader = shaders[7];
 	}
 	void BarnesHutSimulation::CreatePipelines() {
 		// Set the descriptor set layouts
@@ -628,7 +661,9 @@ namespace gsim {
 			boxShader2,
 			clearShader,
 			initShader,
+			particleSortShader,
 			treeInitShader,
+			treeMoveShader,
 			treeSortShader
 		};
 		VkPipelineLayout pipelineLayouts[] {
@@ -636,13 +671,15 @@ namespace gsim {
 			bufferPipelineLayout, // boxPipeline2
 			bufferPipelineLayout, // clearPipeline
 			bufferPipelineLayout, // initPipeline
+			bufferPipelineLayout, // particleSortPipeline
 			treePipelineLayout,   // treeInitPipeline
+			treePipelineLayout,   // treeMovePipeline
 			treePipelineLayout    // treeSortPipeline
 		};
 
 		// Set the pipeline create infos
-		VkComputePipelineCreateInfo pipelineInfos[6];
-		for(uint32_t i = 0; i != 6; ++i) {
+		VkComputePipelineCreateInfo pipelineInfos[8];
+		for(uint32_t i = 0; i != 8; ++i) {
 			pipelineInfos[i] = {
 				.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
 				.pNext = nullptr,
@@ -663,8 +700,8 @@ namespace gsim {
 		}
 
 		// Create the pipelines
-		VkPipeline pipelines[6];
-		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 6, pipelineInfos, nullptr, pipelines);
+		VkPipeline pipelines[8];
+		result = vkCreateComputePipelines(device->GetDevice(), VK_NULL_HANDLE, 8, pipelineInfos, nullptr, pipelines);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan Barnes-Hut simulation pipelines! Error code: %s", string_VkResult(result));
 		
@@ -673,8 +710,10 @@ namespace gsim {
 		boxPipeline2 = pipelines[1];
 		clearPipeline = pipelines[2];
 		initPipeline = pipelines[3];
-		treeInitPipeline = pipelines[4];
-		treeSortPipeline = pipelines[5];
+		particleSortPipeline = pipelines[4];
+		treeInitPipeline = pipelines[5];
+		treeMovePipeline = pipelines[6];
+		treeSortPipeline = pipelines[7];
 	}
 	void BarnesHutSimulation::CreateCommandObjects() {
 		// Set the simulation fence create info
@@ -763,7 +802,7 @@ namespace gsim {
 			uint32_t treeSize = 1 << (i << 1);
 			uint32_t workgroupCount = (treeSize + WORKGROUP_SIZE_TREE - 1) / WORKGROUP_SIZE_TREE;
 
-			// Build the current height of the tree
+			// Build the current depth of the tree
 			vkCmdBindPipeline(treeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, treeInitPipeline);
 			vkCmdDispatch(treeCommandBuffer, workgroupCount, 1, 1);
 			vkCmdPipelineBarrier(treeCommandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
@@ -778,11 +817,27 @@ namespace gsim {
 			uint32_t treeSize = 1 << (i << 1);
 			uint32_t workgroupCount = (treeSize + WORKGROUP_SIZE_TREE - 1) / WORKGROUP_SIZE_TREE;
 
-			// Build the current height of the tree
+			// Sort the current depth of the tree
 			vkCmdBindPipeline(treeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, treeSortPipeline);
 			vkCmdDispatch(treeCommandBuffer, workgroupCount, 1, 1);
 			vkCmdPipelineBarrier(treeCommandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 		}
+
+		// Record the tree moving
+		for(uint32_t i = 0; i != 10; ++i) {
+			// Push the current depth
+			vkCmdPushConstants(treeCommandBuffer, treePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &i);
+
+			// Get the number of workgroups
+			uint32_t treeSize = 1 << (i << 1);
+			uint32_t workgroupCount = (treeSize + WORKGROUP_SIZE_TREE - 1) / WORKGROUP_SIZE_TREE;
+
+			// Move the current depth of the tree
+			vkCmdBindPipeline(treeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, treeMovePipeline);
+			vkCmdDispatch(treeCommandBuffer, workgroupCount, 1, 1);
+		}
+
+		vkCmdPipelineBarrier(treeCommandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
 		// End recording the command buffer
 		result = vkEndCommandBuffer(treeCommandBuffer);
@@ -869,6 +924,11 @@ namespace gsim {
 			// Build the tree
 			vkCmdExecuteCommands(commandBuffer, 1, &treeCommandBuffer);
 
+			// Sort the particles
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, particleSortPipeline);
+			vkCmdDispatch(commandBuffer, WORKGROUP_SIZE_BOX, 1, 1);
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
+
 			// Get the new indices
 			particleSystem->NextComputeIndices();
 		}
@@ -923,7 +983,9 @@ namespace gsim {
 		vkDestroyPipeline(device->GetDevice(), boxPipeline2, nullptr);
 		vkDestroyPipeline(device->GetDevice(), clearPipeline, nullptr);
 		vkDestroyPipeline(device->GetDevice(), initPipeline, nullptr);
+		vkDestroyPipeline(device->GetDevice(), particleSortPipeline, nullptr);
 		vkDestroyPipeline(device->GetDevice(), treeInitPipeline, nullptr);
+		vkDestroyPipeline(device->GetDevice(), treeMovePipeline, nullptr);
 		vkDestroyPipeline(device->GetDevice(), treeSortPipeline, nullptr);
 
 		vkDestroyPipelineLayout(device->GetDevice(), bufferPipelineLayout, nullptr);
@@ -934,7 +996,9 @@ namespace gsim {
 		vkDestroyShaderModule(device->GetDevice(), boxShader2, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), clearShader, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), initShader, nullptr);
+		vkDestroyShaderModule(device->GetDevice(), particleSortShader, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), treeInitShader, nullptr);
+		vkDestroyShaderModule(device->GetDevice(), treeMoveShader, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), treeSortShader, nullptr);
 
 		// Destroy the descriptor pool and its set layouts
@@ -958,6 +1022,8 @@ namespace gsim {
 		vkDestroyBuffer(device->GetDevice(), stateBuffer, nullptr);
 		vkDestroyBuffer(device->GetDevice(), countBuffer, nullptr);
 		vkDestroyBuffer(device->GetDevice(), radiusBuffer, nullptr);
+		vkDestroyBuffer(device->GetDevice(), nodePosBuffer, nullptr);
+		vkDestroyBuffer(device->GetDevice(), nodeMassBuffer, nullptr);
 		vkDestroyBuffer(device->GetDevice(), srcBuffer, nullptr);
 
 		vkFreeMemory(device->GetDevice(), bufferMemory, nullptr);

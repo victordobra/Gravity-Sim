@@ -68,6 +68,8 @@ namespace gsim {
 		VkBuffer stateBuffer;
 		VkBuffer countBuffer;
 		VkBuffer radiusBuffer;
+		VkBuffer nodePosBuffer;
+		VkBuffer nodeMassBuffer;
 		VkBuffer srcBuffer;
 		VkDeviceMemory bufferMemory;
 
@@ -86,7 +88,9 @@ namespace gsim {
 		VkShaderModule boxShader2;
 		VkShaderModule clearShader;
 		VkShaderModule initShader;
+		VkShaderModule particleSortShader;
 		VkShaderModule treeInitShader;
+		VkShaderModule treeMoveShader;
 		VkShaderModule treeSortShader;
 
 		VkPipelineLayout bufferPipelineLayout;
@@ -96,7 +100,9 @@ namespace gsim {
 		VkPipeline boxPipeline2;
 		VkPipeline clearPipeline;
 		VkPipeline initPipeline;
+		VkPipeline particleSortPipeline;
 		VkPipeline treeInitPipeline;
+		VkPipeline treeMovePipeline;
 		VkPipeline treeSortPipeline;
 
 		VkFence simulationFence;
