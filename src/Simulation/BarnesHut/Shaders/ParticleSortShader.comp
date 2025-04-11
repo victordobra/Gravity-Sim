@@ -48,10 +48,10 @@ layout(set = 2, binding = 2) coherent buffer RadiusBuffer {
 	float radiuses[];
 };
 layout(set = 2, binding = 3) coherent buffer NodePosBuffer {
-    vec2 nodePos[];
+	vec2 nodePos[];
 };
 layout(set = 2, binding = 4) coherent buffer NodeMassBuffer {
-    float nodeMass[];
+	float nodeMass[];
 };
 layout(set = 2, binding = 5) coherent buffer SrcBuffer {
 	uint sortedSrc[];
@@ -100,15 +100,15 @@ void main() {
 
 		uint ind = indX | (indY << 1);
 
-        // Write the source index
-        uint dstInd = atomicAdd(treeStarts[9].starts[ind].x, 1);
-        sortedSrc[dstInd] = i;
+		// Write the source index
+		uint dstInd = atomicAdd(treeStarts[9].starts[ind].x, 1);
+		sortedSrc[dstInd] = i;
 
-        // Write the particle's info to the sorted tree
-        dstInd = atomicAdd(treeStarts[9].starts[ind].y, 1);
-        counts[dstInd] = 1;
-        radiuses[dstInd] = 0;
-        nodePos[dstInd] = pos;
-        nodeMass[dstInd] = mass;
-    }
+		// Write the particle's info to the sorted tree
+		dstInd = atomicAdd(treeStarts[9].starts[ind].y, 1);
+		counts[dstInd] = 1;
+		radiuses[dstInd] = 0;
+		nodePos[dstInd] = pos;
+		nodeMass[dstInd] = mass;
+	}
 }

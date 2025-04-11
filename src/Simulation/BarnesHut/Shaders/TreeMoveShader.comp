@@ -25,10 +25,10 @@ layout(set = 0, binding = 2) coherent buffer RadiusBuffer {
 	float radiuses[];
 };
 layout(set = 0, binding = 3) coherent buffer NodePosBuffer {
-    vec2 nodePos[];
+	vec2 nodePos[];
 };
 layout(set = 0, binding = 4) coherent buffer NodeMassBuffer {
-    float nodeMass[];
+	float nodeMass[];
 };
 layout(set = 0, binding = 5) coherent buffer SrcBuffer {
 	uint sortedSrc[];
@@ -58,23 +58,24 @@ void main() {
 	uint treeSize = 1 << (push.depth << 1);
 	if(gl_GlobalInvocationID.x < treeSize) {
 		// Load the node's info
-        uvec2 count = treeCounts[push.depth].counts[gl_GlobalInvocationID.x];
-        uvec2 start = treeStarts[push.depth].starts[gl_GlobalInvocationID.x];
-        vec2 pos = treePos[push.depth].pos[gl_GlobalInvocationID.x];
-        float mass = treeMass[push.depth].mass[gl_GlobalInvocationID.x];
+		uvec2 count = treeCounts[push.depth].counts[gl_GlobalInvocationID.x];
+		uvec2 start = treeStarts[push.depth].starts[gl_GlobalInvocationID.x];
+		vec2 pos = treePos[push.depth].pos[gl_GlobalInvocationID.x];
+		float mass = treeMass[push.depth].mass[gl_GlobalInvocationID.x];
 
-        // Check if the current node exists
-        if(count.y > 1) {
-            // Update the center's position
-            pos /= mass;
+		// Check if the current node exists
+		if(count.y > 1) {
+			// Update the center's position
+			if(mass != 0)
+				pos /= mass;
 
 			// Calculate the radius
 			vec2 boxSize = state.box.zw - state.box.xy;
 			float radius = dot(boxSize, boxSize) * 0.5;
 			radius /= 1 << (push.depth << 1);
 
-            // Write the node's info
-            counts[start.y] = count.y;
+			// Write the node's info
+			counts[start.y] = count.y;
 			radiuses[start.y] = radius;
 			nodePos[start.y] = pos;
 			nodeMass[start.y] = mass;
@@ -82,6 +83,6 @@ void main() {
 			// Update the node start, if required
 			if(push.depth == 9)
 				treeStarts[push.depth].starts[gl_GlobalInvocationID.x] += uvec2(0, 1);
-        }
+		}
 	}
 }

@@ -87,6 +87,7 @@ namespace gsim {
 		VkShaderModule boxShader1;
 		VkShaderModule boxShader2;
 		VkShaderModule clearShader;
+		VkShaderModule forceShader;
 		VkShaderModule initShader;
 		VkShaderModule particleSortShader;
 		VkShaderModule treeInitShader;
@@ -99,6 +100,7 @@ namespace gsim {
 		VkPipeline boxPipeline1;
 		VkPipeline boxPipeline2;
 		VkPipeline clearPipeline;
+		VkPipeline forcePipeline;
 		VkPipeline initPipeline;
 		VkPipeline particleSortPipeline;
 		VkPipeline treeInitPipeline;
