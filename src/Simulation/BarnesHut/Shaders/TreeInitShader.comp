@@ -1,7 +1,7 @@
 #version 440
 
 // Constants
-layout(constant_id = 0) const uint WORKGROUP_SIZE_BOX = 128;
+layout(constant_id = 0) const uint WORKGROUP_SIZE_PARTICLE = 128;
 layout(constant_id = 1) const uint WORKGROUP_SIZE_TREE = 64;
 layout(constant_id = 2) const uint WORKGROUP_SIZE_FORCE = 32;
 
@@ -9,42 +9,39 @@ layout(constant_id = 3) const float SIMULATION_TIME = 0.001;
 layout(constant_id = 4) const float GRAVITATIONAL_CONST = 1;
 layout(constant_id = 5) const float SOFTENING_LEN_SQR = 0.01;
 layout(constant_id = 6) const float ACCURACY_PARAMETER_SQR = 1.0;
+layout(constant_id = 7) const float SIMULATION_SIZE = 500.0;
 
-layout(constant_id = 7) const uint PARTICLE_COUNT = 0;
-layout(constant_id = 8) const uint TREE_SIZE = 0;
+layout(constant_id = 8) const uint PARTICLE_COUNT = 0;
+layout(constant_id = 9) const uint TREE_SIZE = 0;
 
 // Simulation buffers
-layout(set = 0, binding = 0) coherent buffer StateBuffer {
-	vec4 box;
-	vec4 boxes[WORKGROUP_SIZE_BOX];
-} state;
-layout(set = 0, binding = 1) coherent buffer CountBuffer {
+layout(set = 0, binding = 0) coherent buffer CountBuffer {
 	uint counts[];
 };
-layout(set = 0, binding = 2) coherent buffer RadiusBuffer {
+layout(set = 0, binding = 1) coherent buffer RadiusBuffer {
 	float radiuses[];
 };
-layout(set = 0, binding = 3) coherent buffer NodePosBuffer {
+layout(set = 0, binding = 2) coherent buffer NodePosBuffer {
     vec2 nodePos[];
 };
-layout(set = 0, binding = 4) coherent buffer NodeMassBuffer {
+layout(set = 0, binding = 3) coherent buffer NodeMassBuffer {
     float nodeMass[];
 };
-layout(set = 0, binding = 5) coherent buffer SrcBuffer {
+layout(set = 0, binding = 4) coherent buffer SrcBuffer {
 	uint sortedSrc[];
 };
-layout(set = 0, binding = 6) coherent buffer TreeCountBuffer {
+layout(set = 0, binding = 5) coherent buffer TreeCountBuffer {
 	uvec2 counts[];
-} treeCounts[10];
-layout(set = 0, binding = 7) coherent buffer TreeStartBuffer {
+} treeCounts[11];
+layout(set = 0, binding = 6) coherent buffer TreeStartBuffer {
 	uvec2 starts[];
-} treeStarts[10];
-layout(set = 0, binding = 8) coherent buffer TreePosBuffer {
+} treeStarts[11];
+layout(set = 0, binding = 7) coherent buffer TreePosBuffer {
 	vec2 pos[];
-} treePos[10];
-layout(set = 0, binding = 9) coherent buffer TreeMassBuffer {
+} treePos[11];
+layout(set = 0, binding = 8) coherent buffer TreeMassBuffer {
 	float mass[];
-} treeMass[10];
+} treeMass[11];
 
 layout(local_size_x_id = 1, local_size_y = 1, local_size_z = 1) in;
 

@@ -65,7 +65,6 @@ namespace gsim {
 		VulkanDevice* device;
 		ParticleSystem* particleSystem;
 
-		VkBuffer stateBuffer;
 		VkBuffer countBuffer;
 		VkBuffer radiusBuffer;
 		VkBuffer nodePosBuffer;
@@ -73,10 +72,10 @@ namespace gsim {
 		VkBuffer srcBuffer;
 		VkDeviceMemory bufferMemory;
 
-		VkBuffer treeCountBuffers[10];
-		VkBuffer treeStartBuffers[10];
-		VkBuffer treePosBuffers[10];
-		VkBuffer treeMassBuffers[10];
+		VkBuffer treeCountBuffers[11];
+		VkBuffer treeStartBuffers[11];
+		VkBuffer treePosBuffers[11];
+		VkBuffer treeMassBuffers[11];
 		VkDeviceMemory treeBufferMemory;
 
 		VkDescriptorSetLayout particleSetLayout;
@@ -84,8 +83,6 @@ namespace gsim {
 		VkDescriptorPool descriptorPool;
 		VkDescriptorSet descriptorSets[4];
 
-		VkShaderModule boxShader1;
-		VkShaderModule boxShader2;
 		VkShaderModule clearShader;
 		VkShaderModule forceShader;
 		VkShaderModule initShader;
@@ -97,8 +94,6 @@ namespace gsim {
 		VkPipelineLayout bufferPipelineLayout;
 		VkPipelineLayout treePipelineLayout;
 
-		VkPipeline boxPipeline1;
-		VkPipeline boxPipeline2;
 		VkPipeline clearPipeline;
 		VkPipeline forcePipeline;
 		VkPipeline initPipeline;
