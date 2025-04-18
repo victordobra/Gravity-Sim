@@ -109,7 +109,11 @@ void main() {
 			atomicAdd(treeMass[10].mass[ind], mass);
 		} else {
 			// Update the particle's mass
+			pos = vec2(-SIMULATION_SIZE * 2);
+			particlesPosIn[i] = pos;
 			particlesMassIn[i] = 0;
+			particlesPosOut[i] = pos;
+			particlesMassOut[i] = 0;
 		}
 	}
 }
