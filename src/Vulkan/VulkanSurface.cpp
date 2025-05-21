@@ -2,7 +2,9 @@
 #include "Debug/Exception.hpp"
 
 #if defined(WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <vulkan/vulkan_win32.h>
 #endif
@@ -14,7 +16,7 @@ namespace gsim {
 		// Load the window's platform info
 		Window::PlatformInfo platformInfo = window->GetPlatformInfo();
 
-#if defined(WIN32)
+#if defined(WIN32) || defined(_WIN32)
 		// Set the Win32 surface create info
 		VkWin32SurfaceCreateInfoKHR createInfo {
 			.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,

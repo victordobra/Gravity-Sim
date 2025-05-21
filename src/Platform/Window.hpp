@@ -4,8 +4,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(WIN32)
-#include <windef.h>
+#if defined(WIN32) || defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #endif
 
 namespace gsim {
@@ -24,7 +27,7 @@ namespace gsim {
 			bool resizing;
 		};
 
-#if defined(WIN32)
+#if defined(WIN32) || defined(_WIN32)
 		/// @brief A struct containing the window's Windows specific info.
 		struct PlatformInfo {
 			/// @brief The handle to the Windows instance.

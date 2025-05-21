@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(WIN32)
+#if defined(WIN32) || defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <vulkan/vulkan_win32.h>
@@ -14,7 +14,7 @@
 namespace gsim {
 	// Constants
 	static const char* const REQUIRED_INSTANCE_EXTENSIONS[] = {
-#if defined(WIN32)
+#if defined(WIN32) || defined(_WIN32)
 		VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
 		VK_KHR_SURFACE_EXTENSION_NAME

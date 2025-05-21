@@ -158,7 +158,7 @@ int main(int argc, char** args) {
 	// Check if only the help message is requested
 	if(argc == 2 && !strcmp(args[1], "--help")) {
 		// Print the help string and exit the program
-		printf(ARGS_HELP, GSIM_PROJECT_VERSION_MAJOR, GSIM_PROJECT_VERSION_MINOR, GSIM_PROJECT_VERSION_PATCH);
+		printf(ARGS_HELP, GSIM_PROJECT_NAME, GSIM_PROJECT_VERSION_MAJOR, GSIM_PROJECT_VERSION_MINOR, GSIM_PROJECT_VERSION_PATCH);
 	}
 
 	// Parse all console args

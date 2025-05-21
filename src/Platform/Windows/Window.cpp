@@ -1,12 +1,14 @@
 #include <stddef.h>
 
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
 
 #include "Platform/Window.hpp"
 #include "Debug/Exception.hpp"
 #include <unordered_map>
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 // HWND hash

@@ -2,10 +2,6 @@
 include(./.env.cmake OPTIONAL RESULT_VARIABLE LOCAL_ENV)
 message(STATUS "Local .env file included successfully.")
 
-# Include the local .build file
-include(./.build.cmake OPTIONAL RESULT_VARIABLE LOCAL_BUILD)
-message(STATUS "Local .build file included successfully.")
-
 # Set the minumum required version
 cmake_minimum_required(VERSION ${CMAKE_MIN_VERSION})
 message(STATUS "CMake minimum required version set to ${CMAKE_MIN_VERSION}.")
@@ -15,14 +11,14 @@ project(${PROJECT_NAME} VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR
 message(STATUS "Project name set to \"${PROJECT_NAME}\".")
 message(STATUS "Project version set to ${PROJECT_VERSION}.")
 
+# Add MSVC compile options, if required
+if(MSVC)
+	add_compile_options(/D_CRT_SECURE_NO_WARNINGS /D_USE_MATH_DEFINES /Zc:preprocessor)
+endif()
+
 # Configure the info header file
 configure_file(${PROJECT_SOURCE_DIR}/info/ProjectInfo.hpp.in ${PROJECT_SOURCE_DIR}/info/ProjectInfo.hpp)
 message(STATUS "Configured info header file successfully.")
-
-# Enable testing
-include(CTest)
-enable_testing()
-message(STATUS "Testing enabled successfully")
 
 # Find the source files
 file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
@@ -38,6 +34,7 @@ endif()
 
 # Create the project executable
 add_executable(${PROJECT_NAME} ${SOURCES})
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 message(STATUS "Project executable created successfully.")
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
@@ -45,12 +42,12 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 	target_include_directories(${PROJECT_NAME} PUBLIC $ENV{VULKAN_SDK}/Include ${PROJECT_SOURCE_DIR}/info ${PROJECT_SOURCE_DIR}/src)
 	message(STATUS "Project include directories added.")
 
-	if(${TARGET_ARCH} STREQUAL "x86_64")
-		# Add the link directories for x86_64 Windows
+	if(${CMAKE_SIZEOF_VOID_P} EQUAL 4)
+		# Add the link directories for 32-bit Windows
 		target_link_directories(${PROJECT_NAME} PUBLIC $ENV{VULKAN_SDK}/Lib32)
 		message(STATUS "Project link directories added.")
 	else()
-		# Add the link directories for x86_64 Windows
+		# Add the link directories for 64-bit Windows
 		target_link_directories(${PROJECT_NAME} PUBLIC $ENV{VULKAN_SDK}/Lib)
 		message(STATUS "Project link directories added.")
 	endif()
