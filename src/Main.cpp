@@ -282,12 +282,8 @@ int main(int argc, char** args) {
 					programInfo.targetSimulationCount = programInfo.maxSimulationCount;
 			}
 
-			// Destroy the simulation
-			if(programInfo.directSim) {
-				delete programInfo.directSim;
-			} else {
-				delete programInfo.barnesHutSim;
-			}
+			// Wait for the device to idle
+			vkDeviceWaitIdle(programInfo.device->GetDevice());
 
 			// Output the benchmark info, if requested
 			if(programInfo.benchmark) {
@@ -311,6 +307,13 @@ int main(int argc, char** args) {
 				} else {
 					programInfo.logger->LogMessageForced(gsim::Logger::MESSAGE_LEVEL_INFO, "Average runtime/simulation: %.1fus", (runtimeAvgMs * 1000));
 				}
+			}
+
+			// Destroy the simulation
+			if(programInfo.directSim) {
+				delete programInfo.directSim;
+			} else {
+				delete programInfo.barnesHutSim;
 			}
 
 			// Save the particle infos, if an output file was provided
@@ -388,6 +391,9 @@ int main(int argc, char** args) {
 				if(programInfo.targetSimulationCount > programInfo.maxSimulationCount)
 					programInfo.targetSimulationCount = programInfo.maxSimulationCount;
 			}
+
+			// Wait for the device to idle
+			vkDeviceWaitIdle(programInfo.device->GetDevice());
 
 			// Destroy the pipelines
 			delete programInfo.graphicsPipeline;

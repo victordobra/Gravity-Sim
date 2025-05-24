@@ -406,8 +406,7 @@ namespace gsim {
 		vkDestroyCommandPool(device, transferCommandPool, nullptr);
 		vkDestroyCommandPool(device, computeCommandPool, nullptr);
 
-		// Wait for the device to idle and destroy it
-		vkDeviceWaitIdle(device);
+		// Destroy the logical device
 		vkDestroyDevice(device, nullptr);
 	}
 }

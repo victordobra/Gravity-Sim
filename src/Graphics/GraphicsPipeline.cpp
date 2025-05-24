@@ -252,14 +252,22 @@ namespace gsim {
 			.flags = 0
 		};
 
-		// Create the semaphores
+		// Create the unage available semaphore
 		result = vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphore);
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan rendering synchronization semaphores! Error code: %s", string_VkResult(result));
 
-		result = vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, &renderingFinishedSemaphore);
-		if(result != VK_SUCCESS)
-			GSIM_THROW_EXCEPTION("Failed to create Vulkan rendering synchronization semaphores! Error code: %s", string_VkResult(result));
+		// Allocate the rendering finished semaphore array
+		renderingFinishedSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * swapChain->GetImageCount());
+		if(!renderingFinishedSemaphores)
+			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan rendering synchronization semaphores!");
+
+		// Create the rendering finished semaphores
+		for(uint32_t i = 0; i != swapChain->GetImageCount(); ++i) {
+			result = vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, renderingFinishedSemaphores + i);
+			if(result != VK_SUCCESS)
+				GSIM_THROW_EXCEPTION("Failed to create Vulkan rendering synchronization semaphores! Error code: %s", string_VkResult(result));
+		}
 		
 		// Set the command buffer alloc info
 		VkCommandBufferAllocateInfo allocInfo {
@@ -399,7 +407,7 @@ namespace gsim {
 			.commandBufferCount = 1,
 			.pCommandBuffers = &commandBuffer,
 			.signalSemaphoreCount = 1,
-			.pSignalSemaphores = &renderingFinishedSemaphore
+			.pSignalSemaphores = renderingFinishedSemaphores + imageIndex
 		};
 
 		// Submit the command buffer to the graphics queue
@@ -414,7 +422,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 			.pNext = nullptr,
 			.waitSemaphoreCount = 1,
-			.pWaitSemaphores = &renderingFinishedSemaphore,
+			.pWaitSemaphores = renderingFinishedSemaphores + imageIndex,
 			.swapchainCount = 1,
 			.pSwapchains = &swapChainHandle,
 			.pImageIndices = &imageIndex,
@@ -433,9 +441,13 @@ namespace gsim {
 
 		// Destroy the pipeline's objects
 		vkFreeCommandBuffers(device->GetDevice(), device->GetGraphicsCommandPool(), 1, &commandBuffer);
+
 		vkDestroyFence(device->GetDevice(), renderingFence, nullptr);
 		vkDestroySemaphore(device->GetDevice(), imageAvailableSemaphore, nullptr);
-		vkDestroySemaphore(device->GetDevice(), renderingFinishedSemaphore, nullptr);
+		for(uint32_t i = 0; i != swapChain->GetImageCount(); ++i)
+			vkDestroySemaphore(device->GetDevice(), renderingFinishedSemaphores[i], nullptr);
+		free(renderingFinishedSemaphores);
+
 		vkDestroyPipeline(device->GetDevice(), pipeline, nullptr);
 		vkDestroyPipelineLayout(device->GetDevice(), pipelineLayout, nullptr);
 		vkDestroyShaderModule(device->GetDevice(), vertexShaderModule, nullptr);

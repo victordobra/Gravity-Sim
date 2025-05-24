@@ -100,7 +100,7 @@ namespace gsim {
 
 		VkFence renderingFence;
 		VkSemaphore imageAvailableSemaphore;
-		VkSemaphore renderingFinishedSemaphore;
+		VkSemaphore* renderingFinishedSemaphores;
 		VkCommandBuffer commandBuffer;
 	};
 }
