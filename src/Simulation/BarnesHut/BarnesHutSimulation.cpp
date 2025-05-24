@@ -356,7 +356,7 @@ namespace gsim {
 		// Set the descriptor pool size
 		VkDescriptorPoolSize descriptorPoolSize {
 			.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			.descriptorCount = 54
+			.descriptorCount = 58
 		};
 
 		// Set the descriptor pool create info
