@@ -9,7 +9,8 @@ namespace gsim {
 	const uint32_t WORKGROUP_SIZE = 64;
 
 	// Structs
-	struct PushConstants {
+	struct SpecializationConstants {
+		uint32_t workgroupSize;
 		float simulationTime;
 		float gravitationalConst;
 		float softeningLenSqr;
@@ -154,13 +155,6 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan simulation shader module! Error code: %s", string_VkResult(result));
 		
-		// Set the push constant range
-		VkPushConstantRange pushConstantRange {
-			.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-			.offset = 0,
-			.size = sizeof(PushConstants)
-		};
-
 		// Set the pipeline layout create info
 		VkPipelineLayoutCreateInfo layoutInfo {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -168,8 +162,8 @@ namespace gsim {
 			.flags = 0,
 			.setLayoutCount = 2,
 			.pSetLayouts = setLayouts,
-			.pushConstantRangeCount = 1,
-			.pPushConstantRanges = &pushConstantRange
+			.pushConstantRangeCount = 0,
+			.pPushConstantRanges = nullptr
 		};
 
 		// Create the pipeline layout
@@ -177,19 +171,50 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to create Vulkan compute pipeline layout! Error code: %s", string_VkResult(result));
 		
-		// Set the specialization map entry
-		VkSpecializationMapEntry specializationEntry {
-			.constantID = 0,
-			.offset = 0,
-			.size = sizeof(uint32_t)
+		// Set the specialization constants
+		SpecializationConstants specializationConst {
+			.workgroupSize = WORKGROUP_SIZE,
+			.simulationTime = particleSystem->GetSimulationTime(),
+			.gravitationalConst = particleSystem->GetGravitationalConst(),
+			.softeningLenSqr = particleSystem->GetSofteningLen() * particleSystem->GetSofteningLen(),
+			.particleCount = (uint32_t)particleSystem->GetAlignedParticleCount()
+		};
+
+		// Set the specialization map entries
+		VkSpecializationMapEntry specializationEntries[] {
+			{
+				.constantID = 0,
+				.offset = offsetof(SpecializationConstants, workgroupSize),
+				.size = sizeof(uint32_t)
+			},
+			{
+				.constantID = 1,
+				.offset = offsetof(SpecializationConstants, simulationTime),
+				.size = sizeof(float)
+			},
+			{
+				.constantID = 2,
+				.offset = offsetof(SpecializationConstants, gravitationalConst),
+				.size = sizeof(float)
+			},
+			{
+				.constantID = 3,
+				.offset = offsetof(SpecializationConstants, softeningLenSqr),
+				.size = sizeof(float)
+			},
+			{
+				.constantID = 4,
+				.offset = offsetof(SpecializationConstants, particleCount),
+				.size = sizeof(uint32_t)
+			}
 		};
 
 		// Set the specialization info
 		VkSpecializationInfo specializationInfo {
-			.mapEntryCount = 1,
-			.pMapEntries = &specializationEntry,
-			.dataSize = sizeof(uint32_t),
-			.pData = &WORKGROUP_SIZE
+			.mapEntryCount = 5,
+			.pMapEntries = specializationEntries,
+			.dataSize = sizeof(SpecializationConstants),
+			.pData = &specializationConst
 		};
 		
 		// Set the pipeline create info
@@ -269,14 +294,6 @@ namespace gsim {
 		// Bind the compute pipeline
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 
-		// Set the push constants
-		PushConstants pushConstants {
-			.simulationTime = particleSystem->GetSimulationTime() * particleSystem->GetSimulationSpeed(),
-			.gravitationalConst = particleSystem->GetGravitationalConst(),
-			.softeningLenSqr = particleSystem->GetSofteningLen() * particleSystem->GetSofteningLen(),
-			.particleCount = (uint32_t)particleSystem->GetAlignedParticleCount()
-		};
-
 		// Set the memory barrier info
 		VkMemoryBarrier memoryBarrier {
 			.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
@@ -291,11 +308,8 @@ namespace gsim {
 			VkDescriptorSet commandSets[] { descriptorSets[particleSystem->GetComputeInputIndex()], descriptorSets[particleSystem->GetComputeOutputIndex()] };
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 2, commandSets, 0, nullptr);
 
-			// Push the constants
-			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &pushConstants);
-
 			// Run the shader
-			vkCmdDispatch(commandBuffer, pushConstants.particleCount / WORKGROUP_SIZE, 1, 1);
+			vkCmdDispatch(commandBuffer, (uint32_t)(particleSystem->GetAlignedParticleCount() / WORKGROUP_SIZE), 1, 1);
 
 			// Add the pipeline barrier
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
