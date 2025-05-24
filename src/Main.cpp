@@ -96,9 +96,9 @@ static void WindowDrawCallback(void* userData, void* args) {
 
 	// Run the simulations
 	if(programInfo->directSim) {
-		programInfo->directSim->RunSimulations(programInfo->targetSimulationCount - programInfo->simulationCount);
+		programInfo->directSim->RunSimulations((uint32_t)(programInfo->targetSimulationCount - programInfo->simulationCount));
 	} else {
-		programInfo->barnesHutSim->RunSimulations(programInfo->targetSimulationCount - programInfo->simulationCount);
+		programInfo->barnesHutSim->RunSimulations((uint32_t)(programInfo->targetSimulationCount - programInfo->simulationCount));
 	}
 	programInfo->simulationCount = programInfo->targetSimulationCount;
 
@@ -270,9 +270,9 @@ int main(int argc, char** args) {
 			while(programInfo.simulationCount != programInfo.maxSimulationCount) {
 				// Run the simulations
 				if(programInfo.directSim) {
-					programInfo.directSim->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+					programInfo.directSim->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
 				} else {
-					programInfo.barnesHutSim->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+					programInfo.barnesHutSim->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
 				}
 				programInfo.simulationCount = programInfo.targetSimulationCount;
 
@@ -371,9 +371,9 @@ int main(int argc, char** args) {
 
 				// Run the simulations
 				if(programInfo.directSim) {
-					programInfo.directSim->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+					programInfo.directSim->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
 				} else {
-					programInfo.barnesHutSim->RunSimulations(programInfo.targetSimulationCount - programInfo.simulationCount);
+					programInfo.barnesHutSim->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
 				}
 				programInfo.simulationCount = programInfo.targetSimulationCount;
 

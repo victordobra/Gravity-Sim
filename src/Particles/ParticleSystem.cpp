@@ -15,13 +15,13 @@ namespace gsim {
 	void ParticleSystem::GenerateParticlesRandom(Particle* particles, float generateSize, float minMass, float maxMass) {
 		// Create the random engine and distribution
 		std::default_random_engine randomEngine;
-		randomEngine.seed(time(nullptr));
+		randomEngine.seed((uint32_t)time(nullptr));
 		std::uniform_real_distribution<float> distribution(0, 1);
 
 		// Generate every particle
 		for(size_t i = 0; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar
-			float theta = distribution(randomEngine) * 2 * M_PI;
+			float theta = (float)(distribution(randomEngine) * 2 * M_PI);
 			float r = sqrt(1 - distribution(randomEngine)) * generateSize;
 
 			// Convert the polar coordinates to cartesian
@@ -37,7 +37,7 @@ namespace gsim {
 	void ParticleSystem::GenerateParticlesGalaxy(Particle* particles, float generateSize, float minMass, float maxMass) {
 		// Create the random engine and distribution
 		std::default_random_engine randomEngine;
-		randomEngine.seed(time(nullptr));
+		randomEngine.seed((uint32_t)time(nullptr));
 		std::uniform_real_distribution<float> distribution(0, 1);
 
 		// Calculate the orbit velocity
@@ -47,7 +47,7 @@ namespace gsim {
 		// Generate every particle
 		for(size_t i = 0; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar
-			float theta = distribution(randomEngine) * 2 * M_PI;
+			float theta = (float)(distribution(randomEngine) * 2 * M_PI);
 			float r = (1 - distribution(randomEngine)) * generateSize;
 
 			float thetaSin = sinf(theta);
@@ -66,7 +66,7 @@ namespace gsim {
 	void ParticleSystem::GenerateParticlesGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass) {
 		// Create the random engine and distribution
 		std::default_random_engine randomEngine;
-		randomEngine.seed(time(nullptr));
+		randomEngine.seed((uint32_t)time(nullptr));
 		std::uniform_real_distribution<float> distribution(0, 1);
 
 		// Calculate the orbit velocity
@@ -77,7 +77,7 @@ namespace gsim {
 		// Generate every particle in the first galaxy
 		for(size_t i = 0; i != particleCount >> 1; ++i) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
-			float theta = distribution(randomEngine) * 2 * M_PI;
+			float theta = (float)(distribution(randomEngine) * 2 * M_PI);
 			float r = (1 - distribution(randomEngine)) * galaxySize;
 
 			float thetaSin = sinf(theta);
@@ -96,7 +96,7 @@ namespace gsim {
 		// Generate avery particle in the second galaxy
 		for(size_t i = particleCount >> 1; i != particleCount; ++i) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
-			float theta = distribution(randomEngine) * 2 * M_PI;
+			float theta = (float)(distribution(randomEngine) * 2 * M_PI);
 			float r = (1 - distribution(randomEngine)) * galaxySize;
 
 			float thetaSin = sinf(theta);
@@ -115,7 +115,7 @@ namespace gsim {
 	void ParticleSystem::GenerateParticlesSymmetricalGalaxyCollision(Particle* particles, float generateSize, float minMass, float maxMass) {
 		// Create the random engine and distribution
 		std::default_random_engine randomEngine;
-		randomEngine.seed(time(nullptr));
+		randomEngine.seed((uint32_t)time(nullptr));
 		std::uniform_real_distribution<float> distribution(0, 1);
 
 		// Calculate the orbit velocity
@@ -126,7 +126,7 @@ namespace gsim {
 		// Generate every particle in the first galaxy and mirror it in the second
 		for(size_t i = 0; i != particleCount; i += 2) {
 			// Generate the particle's coordinates as polar relative to the galaxy's center
-			float theta = distribution(randomEngine) * 2 * M_PI;
+			float theta = (float)(distribution(randomEngine) * 2 * M_PI);
 			float r = (1 - distribution(randomEngine)) * galaxySize;
 
 			float thetaSin = sinf(theta);

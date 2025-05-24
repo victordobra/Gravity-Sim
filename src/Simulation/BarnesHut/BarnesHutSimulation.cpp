@@ -165,7 +165,7 @@ namespace gsim {
 					.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 					.pNext = nullptr,
 					.flags = 0,
-					.size = formatSizes[i] * (1 << (j << 1)),
+					.size = formatSizes[i] * ((VkDeviceSize)1 << (j << 1)),
 					.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 					.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 					.queueFamilyIndexCount = 1,
@@ -910,7 +910,7 @@ namespace gsim {
 
 			// Calculate and apply the forces
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, forcePipeline);
-			vkCmdDispatch(commandBuffer, particleSystem->GetAlignedParticleCount() / device->GetSubgroupSize(), 1, 1);
+			vkCmdDispatch(commandBuffer, (uint32_t)(particleSystem->GetAlignedParticleCount() / device->GetSubgroupSize()), 1, 1);
 			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &memoryBarrier, 0, nullptr, 0, nullptr);
 
 			// Get the new indices

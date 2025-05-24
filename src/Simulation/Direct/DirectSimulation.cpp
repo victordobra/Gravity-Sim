@@ -127,7 +127,7 @@ namespace gsim {
 				descriptorSetWrites[ind].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				descriptorSetWrites[ind].pNext = nullptr;
 				descriptorSetWrites[ind].dstSet = descriptorSets[i];
-				descriptorSetWrites[ind].dstBinding = j;
+				descriptorSetWrites[ind].dstBinding = (uint32_t)j;
 				descriptorSetWrites[ind].dstArrayElement = 0;
 				descriptorSetWrites[ind].descriptorCount = 1;
 				descriptorSetWrites[ind].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
