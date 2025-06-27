@@ -576,7 +576,7 @@ namespace gsim {
 			.gravitationalConst = particleSystem->GetGravitationalConst(),
 			.softeningLenSqr = particleSystem->GetSofteningLen() * particleSystem->GetSofteningLen(),
 			.accuracyParameterSqr = particleSystem->GetAccuracyParameter() * particleSystem->GetAccuracyParameter(),
-			.simulationSize = 500,
+			.simulationSize = particleSystem->GetSimulationSize(),
 			.particleCount = (uint32_t)particleSystem->GetAlignedParticleCount(),
 			.treeSize = 1024
 		};

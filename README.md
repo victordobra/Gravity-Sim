@@ -30,6 +30,8 @@ The same list can be queried by using the `--help` command line argument.
 
 ### Available parameters
 
+Parameters are values used by the simulation. Passed in the command line with the format `<parameter>=<value>` (for example, `--log-file=log.txt`)
+
 * `--log-file`: The file to output all logs to. If unspecified, logs will not be outputted to a file
 * `--particles-in`: The input file containing the starting variables of the particles. If not specified, the program will use the given generation parameters
 * `--particles-out`: The optional output file in which the variables of the particles will be written once the simulation is finished
@@ -45,7 +47,7 @@ The same list can be queried by using the `--help` command line argument.
 * `--gravitational-const`: The gravitational constant used for the simulation. Defaulted to 1
 * `--simulation-time`: The time interval length, in seconds, simulated in one instance. Defaulted to 1e-3
 * `--simulation-speed`: The speed factor at which the simulation is run. Defaulted to 1
-* `--softening-len`: The softening length used to soften the extreme forces that would usually result from close interactions. Defaulted to 0.2
+* `--softening-len`: The softening length used to soften the extreme forces that would usually result from close interactions. Defaulted to 0.1
 * `--accuracy-parameter`: The accuracy parameter used to calibrate force approximation. Only used for Barnes-Hut simulations. Defaulted to 1
 * `--simulation-algorithm`: The simulation algorithm used to calculate the gravitational forces. One of the following options
     * `direct-sum`: The direct-sum method, calculating every interaction between particles
@@ -53,6 +55,8 @@ The same list can be queried by using the `--help` command line argument.
 * `--simulation-count`: The number of simulations to run before closing the program. No limit will be used if this parameter isn't specified
 
 ### Available options:
+
+Options can be enabled simply by passing them in the program's arguments in the command line.
 
 * `--help`: Displays all parameters and options and exits the program
 * `--log-detailed`: Outputs non-crucial logs that might be useful for debugging or additional information

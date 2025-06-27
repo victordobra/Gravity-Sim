@@ -435,7 +435,7 @@ namespace gsim {
 	}
 
 	// Public functions
-	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float accuracyParameter, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), accuracyParameter(accuracyParameter), softeningLen(softeningLen) {
+	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float simulationSize, float accuracyParameter, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen), simulationSize(simulationSize), accuracyParameter(accuracyParameter) {
 		// Get the particle count alignment
 		size_t particleCountAlignment;
 		if(simulationAlgorithm == SIMULATION_ALGORITHM_DIRECT_SUM) {
@@ -499,7 +499,7 @@ namespace gsim {
 		// Free the particles array
 		free(particles);
 	}
-	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float accuracyParameter, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(particleCount), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), accuracyParameter(accuracyParameter), softeningLen(softeningLen) {
+	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float simulationSize, float accuracyParameter, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(particleCount), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen), simulationSize(simulationSize), accuracyParameter(accuracyParameter) {
 		// Get the particle count alignment
 		size_t particleCountAlignment;
 		if(simulationAlgorithm == SIMULATION_ALGORITHM_DIRECT_SUM) {

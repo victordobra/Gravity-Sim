@@ -53,9 +53,10 @@ namespace gsim {
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param simulationSpeed The speed factor at which the simulation is run.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
+		/// @param simulationSize The size of the simulation's area, in which all particles are contained. Only used for Barnes-Hut simulations.
 		/// @param accuracyParameter The accuracy parameter used to calibrate force approximation. Only used for Barnes-Hut simulations.
 		/// @param simulationAlgorithm The simulation algorithm used to calculate the gravitational forces.
-		ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float accuracyParameter, SimulationAlgorithm simulationAlgorithm);
+		ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float simulationSize, float accuracyParameter, SimulationAlgorithm simulationAlgorithm);
 		/// @brief Generates a particle system based on the given parameters.
 		/// @param device The Vulkan device to use for Vulkan-specific components.
 		/// @param particleCount The number of particles in the system.
@@ -67,9 +68,10 @@ namespace gsim {
 		/// @param simulationTime The time interval length, in seconds, simulated in one instance.
 		/// @param simulationSpeed The speed factor at which the simulation is run.
 		/// @param softeningLen The softening length used to soften the extreme forces that would usually result from close interactions.
+		/// @param simulationSize The size of the simulation's area, in which all particles are contained. Only used for Barnes-Hut simulations.
 		/// @param accuracyParameter The accuracy parameter used to calibrate force approximation. Only used for Barnes-Hut simulations.
 		/// @param simulationAlgorithm The simulation algorithm used to calculate the gravitational forces.
-		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float accuracyParameter, SimulationAlgorithm simulationAlgorithm);
+		ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float simulationSize, float accuracyParameter, SimulationAlgorithm simulationAlgorithm);
 
 		ParticleSystem& operator=(const ParticleSystem&) = delete;
 		ParticleSystem& operator=(ParticleSystem&&) noexcept = delete;
@@ -114,6 +116,11 @@ namespace gsim {
 		/// @return The softening length used to soften the extreme forces that would usually result from close interactions.
 		float GetSofteningLen() const {
 			return softeningLen;
+		}
+		/// @brief Gets the size of the simulation's area, in which all particles are contained.
+		/// @return The size of the simulation's area, in which all particles are contained.
+		float GetSimulationSize() const {
+			return simulationSize;
 		}
 		/// @brief Gets the accuracy parameter used to calibrate force approximation.
 		/// @return The accuracy parameter used to calibrate force approximation.
@@ -198,6 +205,7 @@ namespace gsim {
 		float simulationTime;
 		float simulationSpeed;
 		float softeningLen;
+		float simulationSize;
 		float accuracyParameter;
 
 		Vec2 cameraStartPos;
