@@ -12,7 +12,8 @@ layout(constant_id = 6) const float ACCURACY_PARAMETER_SQR = 1.0;
 layout(constant_id = 7) const float SIMULATION_SIZE = 500.0;
 
 layout(constant_id = 8) const uint PARTICLE_COUNT = 0;
-layout(constant_id = 9) const uint TREE_SIZE = 0;
+const uint TREE_DEPTH = 12;
+const uint TREE_SIZE = 1 << (TREE_DEPTH - 1);
 
 // Simulation buffers
 layout(set = 0, binding = 0) coherent buffer CountBuffer {
@@ -32,16 +33,16 @@ layout(set = 0, binding = 4) coherent buffer SrcBuffer {
 };
 layout(set = 0, binding = 5) coherent buffer TreeCountBuffer {
 	uvec2 counts[];
-} treeCounts[11];
+} treeCounts[TREE_DEPTH];
 layout(set = 0, binding = 6) coherent buffer TreeStartBuffer {
 	uvec2 starts[];
-} treeStarts[11];
+} treeStarts[TREE_DEPTH];
 layout(set = 0, binding = 7) coherent buffer TreePosBuffer {
 	vec2 pos[];
-} treePos[11];
+} treePos[TREE_DEPTH];
 layout(set = 0, binding = 8) coherent buffer TreeMassBuffer {
 	float mass[];
-} treeMass[11];
+} treeMass[TREE_DEPTH];
 
 layout(local_size_x_id = 1, local_size_y = 1, local_size_z = 1) in;
 
@@ -77,7 +78,7 @@ void main() {
 			nodeMass[start.y] = mass;
 
 			// Update the node start, if required
-			if(push.depth == 10)
+			if(push.depth == TREE_DEPTH - 1)
 				treeStarts[push.depth].starts[gl_GlobalInvocationID.x] += uvec2(0, 1);
 		}
 	}

@@ -54,6 +54,8 @@ namespace gsim {
 		/// @brief Destroys the Barnes-Hut simulation.
 		~BarnesHutSimulation();
 	private:
+		static const uint32_t TREE_DEPTH = 12;
+
 		void CreateBuffers();
 		void CreateTreeBuffers();
 		void CreateDescriptorPool();
@@ -72,10 +74,10 @@ namespace gsim {
 		VkBuffer srcBuffer;
 		VkDeviceMemory bufferMemory;
 
-		VkBuffer treeCountBuffers[11];
-		VkBuffer treeStartBuffers[11];
-		VkBuffer treePosBuffers[11];
-		VkBuffer treeMassBuffers[11];
+		VkBuffer treeCountBuffers[TREE_DEPTH];
+		VkBuffer treeStartBuffers[TREE_DEPTH];
+		VkBuffer treePosBuffers[TREE_DEPTH];
+		VkBuffer treeMassBuffers[TREE_DEPTH];
 		VkDeviceMemory treeBufferMemory;
 
 		VkDescriptorSetLayout particleSetLayout;
