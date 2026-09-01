@@ -68,7 +68,7 @@ void main() {
 				pos /= mass;
 
 			// Calculate the radius
-			float radius = SIMULATION_SIZE * SIMULATION_SIZE * 2;
+			float radius = SIMULATION_SIZE * SIMULATION_SIZE * 4;
 			radius /= 1 << (push.depth << 1);
 
 			// Write the node's info
