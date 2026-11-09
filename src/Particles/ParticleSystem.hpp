@@ -27,8 +27,8 @@ namespace gsim {
 		enum SimulationAlgorithm {
 			/// @brief The direct-sum method, calculating every interaction between particles.
 			SIMULATION_ALGORITHM_DIRECT_SUM,
-			/// @brief The Barnes-Hut algorithm, organizing all particles in a quadtree.
-			SIMULATION_ALGORITHM_BARNES_HUT,
+			/// @brief The Barnes-Hut algorithm, organizing all particles in a fixed size quadtree.
+			SIMULATION_ALGORITHM_BARNES_HUT_FIXED,
 			/// @brief The number of implemented simulation algorithms.
 			SIMULATION_ALGORITHM_COUNT
 		};

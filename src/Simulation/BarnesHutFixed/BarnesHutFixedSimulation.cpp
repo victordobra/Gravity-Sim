@@ -1,4 +1,4 @@
-#include "BarnesHutSimulation.hpp"
+#include "BarnesHutFixedSimulation.hpp"
 #include "Debug/Exception.hpp"
 #include <stdint.h>
 
@@ -48,7 +48,7 @@ namespace gsim {
 	};
 
 	// Internal helper functions
-	void BarnesHutSimulation::CreateBuffers() {
+	void BarnesHutFixedSimulation::CreateBuffers() {
 		// Get the compute family index
 		uint32_t computeIndex = device->GetQueueFamilyIndices().computeIndex;
 
@@ -139,7 +139,7 @@ namespace gsim {
 		nodeMassBuffer = buffers[3];
 		srcBuffer = buffers[4];
 	}
-	void BarnesHutSimulation::CreateTreeBuffers() {
+	void BarnesHutFixedSimulation::CreateTreeBuffers() {
 		// Get the compute family index
 		uint32_t computeIndex = device->GetQueueFamilyIndices().computeIndex;
 
@@ -232,7 +232,7 @@ namespace gsim {
 		for(uint32_t i = 0; i != TREE_DEPTH; ++i)
 			treeMassBuffers[i] = buffers[ind++];
 	}
-	void BarnesHutSimulation::CreateDescriptorPool() {
+	void BarnesHutFixedSimulation::CreateDescriptorPool() {
 		// Set the paraticle descriptor set layout bindings
 		VkDescriptorSetLayoutBinding particleSetLayoutBindings[] {
 			{
@@ -476,7 +476,7 @@ namespace gsim {
 		// Update the descriptor sets
 		vkUpdateDescriptorSets(device->GetDevice(), 14 + TREE_DEPTH * 4, setWrites, 0, nullptr);
 	}
-	void BarnesHutSimulation::CreateShaderModules() {
+	void BarnesHutFixedSimulation::CreateShaderModules() {
 		// Save the shader sources and source sizes to arrays
 		const uint32_t* shaderSources[] {
 			CLEAR_SHADER_SOURCE,
@@ -525,7 +525,7 @@ namespace gsim {
 		treeMoveShader = shaders[5];
 		treeSortShader = shaders[6];
 	}
-	void BarnesHutSimulation::CreatePipelines() {
+	void BarnesHutFixedSimulation::CreatePipelines() {
 		// Set the descriptor set layouts
 		VkDescriptorSetLayout setLayouts[] { particleSetLayout, particleSetLayout, barnesHutSetLayout };
 
@@ -695,7 +695,7 @@ namespace gsim {
 		treeMovePipeline = pipelines[5];
 		treeSortPipeline = pipelines[6];
 	}
-	void BarnesHutSimulation::CreateCommandObjects() {
+	void BarnesHutFixedSimulation::CreateCommandObjects() {
 		// Set the simulation fence create info
 		VkFenceCreateInfo fenceInfo {
 			.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -722,7 +722,7 @@ namespace gsim {
 		if(result != VK_SUCCESS)
 			GSIM_THROW_EXCEPTION("Failed to allocate Vulkan simulation command buffers! Error code: %s", string_VkResult(result));
 	}
-	void BarnesHutSimulation::RecordSecondaryCommandBuffers() {
+	void BarnesHutFixedSimulation::RecordSecondaryCommandBuffers() {
 		// Set the command buffer alloc info
 		VkCommandBufferAllocateInfo allocInfo {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -826,11 +826,11 @@ namespace gsim {
 	}
 
 	// Public functions
-	size_t BarnesHutSimulation::GetRequiredParticleAlignment() {
-		return 64;
+	size_t BarnesHutFixedSimulation::GetRequiredParticleAlignment() {
+		return 32;
 	}
 
-	BarnesHutSimulation::BarnesHutSimulation(VulkanDevice* device, ParticleSystem* particleSystem) : device(device), particleSystem(particleSystem) {
+	BarnesHutFixedSimulation::BarnesHutFixedSimulation(VulkanDevice* device, ParticleSystem* particleSystem) : device(device), particleSystem(particleSystem) {
 		// Create all components
 		CreateBuffers();
 		CreateTreeBuffers();
@@ -841,7 +841,7 @@ namespace gsim {
 		RecordSecondaryCommandBuffers();
 	}
 
-	void BarnesHutSimulation::RunSimulations(uint32_t simulationCount) {
+	void BarnesHutFixedSimulation::RunSimulations(uint32_t simulationCount) {
 		// Exit the function if no simulations will be recorded
 		if(!simulationCount)
 			return;
@@ -946,7 +946,7 @@ namespace gsim {
 			GSIM_THROW_EXCEPTION("Failed to submit Vulkan simulation command buffer! Error code: %s", string_VkResult(result));
 	}
 
-	BarnesHutSimulation::~BarnesHutSimulation() {
+	BarnesHutFixedSimulation::~BarnesHutFixedSimulation() {
 		// Wait for the simulation fence
 		vkWaitForFences(device->GetDevice(), 1, &simulationFence, VK_TRUE, UINT64_MAX);
 

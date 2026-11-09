@@ -5,7 +5,8 @@
 #include "Particles/Particle.hpp"
 #include "Particles/ParticleSystem.hpp"
 #include "Platform/Window.hpp"
-#include "Simulation/BarnesHut/BarnesHutSimulation.hpp"
+#include "Simulation/BarnesHutFixed/BarnesHutFixedSimulation.hpp"
+#include "Simulation/Direct/DirectSimulation.hpp"
 #include "Simulation/Direct/DirectSimulation.hpp"
 #include "Vulkan/VulkanDevice.hpp"
 #include "Vulkan/VulkanInstance.hpp"
@@ -40,7 +41,7 @@ const char* const ARGS_HELP =
 	"\t--accuracy-parameter: The accuracy parameter used to calibrate force approximation. Only used for Barnes-Hut simulations. Defaulted to 1.\n"
 	"\t--simulation-algorithm: The simulation algorithm used to calculate the gravitational forces. One of the following options:\n"
 	"\t\tdirect-sum: The direct-sum method, calculating every interaction between particles.\n"
-	"\t\tbarnes-hut: The Barnes-Hut algorithm, organizing all particles in a quadtree.\n"
+	"\t\tbarnes-hut-fixed: The Barnes-Hut algorithm, organizing all particles in a fixed size quadtree.\n"
 	"\t--simulation-count: The number of simulations to run before closing the program. No limit will be used if this parameter isn't specified.\n"
 	"Available options:\n"
 	"\t--help: Displays the current message and exits the program.\n"
@@ -79,8 +80,7 @@ struct ProgramInfo {
 	gsim::ParticleSystem* particleSystem;
 	gsim::GraphicsPipeline* graphicsPipeline;
 
-	gsim::DirectSimulation* directSim = nullptr;
-	gsim::BarnesHutSimulation* barnesHutSim = nullptr;
+	gsim::Simulation* simulation = nullptr;
 
 	gsim::Vec2 cameraPos;
 	float cameraSize;
@@ -97,11 +97,7 @@ static void WindowDrawCallback(void* userData, void* args) {
 	ProgramInfo* programInfo = (ProgramInfo*)userData;
 
 	// Run the simulations
-	if(programInfo->directSim) {
-		programInfo->directSim->RunSimulations((uint32_t)(programInfo->targetSimulationCount - programInfo->simulationCount));
-	} else {
-		programInfo->barnesHutSim->RunSimulations((uint32_t)(programInfo->targetSimulationCount - programInfo->simulationCount));
-	}
+	programInfo->simulation->RunSimulations((uint32_t)(programInfo->targetSimulationCount - programInfo->simulationCount));
 	programInfo->simulationCount = programInfo->targetSimulationCount;
 
 	// Close the window and exit the function if all required simulations were run
@@ -206,8 +202,8 @@ int main(int argc, char** args) {
 		} else if(!strncmp(args[i], "--simulation-algorithm=", 23)) {
 			if(!strcmp(args[i] + 23, "direct-sum")) {
 				programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM;
-			} else if(!strcmp(args[i] + 23, "barnes-hut")) {
-				programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT;
+			} else if(!strcmp(args[i] + 23, "barnes-hut-fixed")) {
+				programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT_FIXED;
 			}
 		} else if(!strncmp(args[i], "--simulation-count=", 19)) {
 			programInfo.maxSimulationCount = (uint64_t)strtoull(args[i] + 19, nullptr, 10);
@@ -259,10 +255,13 @@ int main(int argc, char** args) {
 			}
 
 			// Create the simulation
-			if(programInfo.simulationAlgorithm == gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
-				programInfo.directSim = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
-			} else {
-				programInfo.barnesHutSim = new gsim::BarnesHutSimulation(programInfo.device, programInfo.particleSystem);
+			switch(programInfo.simulationAlgorithm) {
+			case gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM:
+				programInfo.simulation = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
+				break;
+			case gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
+				programInfo.simulation = new gsim::BarnesHutFixedSimulation(programInfo.device, programInfo.particleSystem);
+				break;
 			}
 
 			// Store the clock start, for benchmarking
@@ -273,11 +272,7 @@ int main(int argc, char** args) {
 			// Run all the simulations
 			while(programInfo.simulationCount != programInfo.maxSimulationCount) {
 				// Run the simulations
-				if(programInfo.directSim) {
-					programInfo.directSim->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
-				} else {
-					programInfo.barnesHutSim->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
-				}
+				programInfo.simulation->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
 				programInfo.simulationCount = programInfo.targetSimulationCount;
 
 				// Set the target simulation count
@@ -314,11 +309,7 @@ int main(int argc, char** args) {
 			}
 
 			// Destroy the simulation
-			if(programInfo.directSim) {
-				delete programInfo.directSim;
-			} else {
-				delete programInfo.barnesHutSim;
-			}
+			delete programInfo.simulation;
 
 			// Save the particle infos, if an output file was provided
 			if(programInfo.particlesOutFile)
@@ -355,13 +346,17 @@ int main(int argc, char** args) {
 			programInfo.cameraPos = programInfo.particleSystem->GetCameraStartPos();
 			programInfo.cameraSize = programInfo.particleSystem->GetCameraStartSize();
 
-			// Create the pipelines
+			// Create the graphics pipeline
 			programInfo.graphicsPipeline = new gsim::GraphicsPipeline(programInfo.device, programInfo.swapChain, programInfo.particleSystem);
 
-			if(programInfo.simulationAlgorithm == gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM) {
-				programInfo.directSim = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
-			} else {
-				programInfo.barnesHutSim = new gsim::BarnesHutSimulation(programInfo.device, programInfo.particleSystem);
+			// Create the simulation
+			switch(programInfo.simulationAlgorithm) {
+			case gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM:
+				programInfo.simulation = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
+				break;
+			case gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
+				programInfo.simulation = new gsim::BarnesHutFixedSimulation(programInfo.device, programInfo.particleSystem);
+				break;
 			}
 
 			// Add the event listeners
@@ -377,11 +372,7 @@ int main(int argc, char** args) {
 				programInfo.window->ParseEvents();
 
 				// Run the simulations
-				if(programInfo.directSim) {
-					programInfo.directSim->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
-				} else {
-					programInfo.barnesHutSim->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
-				}
+				programInfo.simulation->RunSimulations((uint32_t)(programInfo.targetSimulationCount - programInfo.simulationCount));
 				programInfo.simulationCount = programInfo.targetSimulationCount;
 
 				// Close the window and exit the loop if all required simulations were run
@@ -399,14 +390,9 @@ int main(int argc, char** args) {
 			// Wait for the device to idle
 			vkDeviceWaitIdle(programInfo.device->GetDevice());
 
-			// Destroy the pipelines
+			// Destroy the graphics pipeline and the simulation
 			delete programInfo.graphicsPipeline;
-			
-			if(programInfo.directSim) {
-				delete programInfo.directSim;
-			} else {
-				delete programInfo.barnesHutSim;
-			}
+			delete programInfo.simulation;
 
 			// Save the particle infos, if an output file was provided
 			if(programInfo.particlesOutFile)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Particles/ParticleSystem.hpp"
+#include "Simulation/Simulation.hpp"
 #include "Vulkan/VulkanDevice.hpp"
 #include <stdint.h>
 #include <vulkan/vk_platform.h>
@@ -8,23 +9,23 @@
 
 namespace gsim {
 	/// @brief A particle simulation which uses the Barnes-Hut algorithm.
-	class BarnesHutSimulation {
+	class BarnesHutFixedSimulation : public Simulation {
 	public:
 		/// @brief Gets the particle alignment required for the simulation to run.
 		/// @return The particle alignment required for the simulation to run.
 		static size_t GetRequiredParticleAlignment();
 
-		BarnesHutSimulation() = delete;
-		BarnesHutSimulation(const BarnesHutSimulation&) = delete;
-		BarnesHutSimulation(BarnesHutSimulation&&) noexcept = delete;
+		BarnesHutFixedSimulation() = delete;
+		BarnesHutFixedSimulation(const BarnesHutFixedSimulation&) = delete;
+		BarnesHutFixedSimulation(BarnesHutFixedSimulation&&) noexcept = delete;
 
 		/// @brief Creates a particle simulation which uses the Barnes-Hut algorithm.
 		/// @param device The Vulkan device to create the compute pipeline in.
 		/// @param particleSystem The particle system whose particles to simulate.
-		BarnesHutSimulation(VulkanDevice* device, ParticleSystem* particleSystem);
+		BarnesHutFixedSimulation(VulkanDevice* device, ParticleSystem* particleSystem);
 
-		BarnesHutSimulation& operator=(const BarnesHutSimulation&) = delete;
-		BarnesHutSimulation& operator=(BarnesHutSimulation&&) = delete;
+		BarnesHutFixedSimulation& operator=(const BarnesHutFixedSimulation&) = delete;
+		BarnesHutFixedSimulation& operator=(BarnesHutFixedSimulation&&) = delete;
 
 		/// @brief Gets the Vulkan device that owns the compute pipeline.
 		/// @return A pointer to the Vulkan device wrapper object.
@@ -49,10 +50,10 @@ namespace gsim {
 
 		/// @brief Runs the given number of simulations.
 		/// @param simulationCount The number of simulations to run.
-		void RunSimulations(uint32_t simulationCount);
+		void RunSimulations(uint32_t simulationCount) override;
 
 		/// @brief Destroys the Barnes-Hut simulation.
-		~BarnesHutSimulation();
+		~BarnesHutFixedSimulation();
 	private:
 		static const uint32_t TREE_DEPTH = 12;
 

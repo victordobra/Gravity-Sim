@@ -1,6 +1,6 @@
 #include "ParticleSystem.hpp"
 #include "Debug/Exception.hpp"
-#include "Simulation/BarnesHut/BarnesHutSimulation.hpp"
+#include "Simulation/BarnesHutFixed/BarnesHutFixedSimulation.hpp"
 #include "Simulation/Direct/DirectSimulation.hpp"
 #include <stdint.h>
 #include <stdio.h>
@@ -438,12 +438,16 @@ namespace gsim {
 	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float simulationSize, float accuracyParameter, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen), simulationSize(simulationSize), accuracyParameter(accuracyParameter) {
 		// Get the particle count alignment
 		size_t particleCountAlignment;
-		if(simulationAlgorithm == SIMULATION_ALGORITHM_DIRECT_SUM) {
+		switch(simulationAlgorithm) {
+		case SIMULATION_ALGORITHM_DIRECT_SUM:
 			particleCountAlignment = DirectSimulation::GetRequiredParticleAlignment();
-		} else if(simulationAlgorithm == SIMULATION_ALGORITHM_BARNES_HUT) {
-			particleCountAlignment = BarnesHutSimulation::GetRequiredParticleAlignment();
-		} else {
+			break;
+		case SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
+			particleCountAlignment = BarnesHutFixedSimulation::GetRequiredParticleAlignment();
+			break;
+		default:
 			GSIM_THROW_EXCEPTION("Invalid simulation algorithm requested!");
+			break;
 		}
 
 		// Open the given file
@@ -502,12 +506,16 @@ namespace gsim {
 	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float simulationSize, float accuracyParameter, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(particleCount), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen), simulationSize(simulationSize), accuracyParameter(accuracyParameter) {
 		// Get the particle count alignment
 		size_t particleCountAlignment;
-		if(simulationAlgorithm == SIMULATION_ALGORITHM_DIRECT_SUM) {
+		switch(simulationAlgorithm) {
+		case SIMULATION_ALGORITHM_DIRECT_SUM:
 			particleCountAlignment = DirectSimulation::GetRequiredParticleAlignment();
-		} else if(simulationAlgorithm == SIMULATION_ALGORITHM_BARNES_HUT) {
-			particleCountAlignment = BarnesHutSimulation::GetRequiredParticleAlignment();
-		} else {
+			break;
+		case SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
+			particleCountAlignment = BarnesHutFixedSimulation::GetRequiredParticleAlignment();
+			break;
+		default:
 			GSIM_THROW_EXCEPTION("Invalid simulation algorithm requested!");
+			break;
 		}
 
 		// Round the particle count down to the nearest even integer if the generate type is set to GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION

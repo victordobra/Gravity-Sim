@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Particles/ParticleSystem.hpp"
+#include "Simulation/Simulation.hpp"
 #include "Vulkan/VulkanDevice.hpp"
 #include <stdint.h>
 #include <vulkan/vk_platform.h>
@@ -8,7 +9,7 @@
 
 namespace gsim {
 	/// @brief A particle simulation which uses the direct sum method.
-	class DirectSimulation {
+	class DirectSimulation : public Simulation {
 	public:
 		/// @brief Gets the particle alignment required for the simulation to run.
 		/// @return The particle alignment required for the simulation to run.
