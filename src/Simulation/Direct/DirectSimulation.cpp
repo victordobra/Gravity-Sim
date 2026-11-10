@@ -23,8 +23,11 @@ namespace gsim {
 	};
 
 	// Public functions
-	size_t DirectSimulation::GetRequiredParticleAlignment() {
-		return WORKGROUP_SIZE;
+	size_t DirectSimulation::GetAlignedParticleCount(size_t particleCount) {
+		return (particleCount + WORKGROUP_SIZE - 1) & ~(WORKGROUP_SIZE - 1);
+	}
+	size_t DirectSimulation::GetBufferSize(size_t alignedParticleCount) {
+		return alignedParticleCount;
 	}
 
 	DirectSimulation::DirectSimulation(VulkanDevice* device, ParticleSystem* particleSystem) : device(device), particleSystem(particleSystem) {

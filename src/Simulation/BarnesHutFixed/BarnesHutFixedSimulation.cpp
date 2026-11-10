@@ -8,6 +8,7 @@ namespace gsim {
 	// Constants
 	const uint32_t WORKGROUP_SIZE_PARTICLE = 128;
 	const uint32_t WORKGROUP_SIZE_TREE = 64;
+	const uint32_t PARTICLE_ALIGNMENT = 32;
 
 	// Structs
 	struct SpecializationConstants {
@@ -826,8 +827,11 @@ namespace gsim {
 	}
 
 	// Public functions
-	size_t BarnesHutFixedSimulation::GetRequiredParticleAlignment() {
-		return 32;
+	size_t BarnesHutFixedSimulation::GetAlignedParticleCount(size_t particleCount) {
+		return (particleCount + PARTICLE_ALIGNMENT - 1) & ~(PARTICLE_ALIGNMENT - 1);
+	}
+	size_t BarnesHutFixedSimulation::GetBufferSize(size_t alignedParticleCount) {
+		return alignedParticleCount;
 	}
 
 	BarnesHutFixedSimulation::BarnesHutFixedSimulation(VulkanDevice* device, ParticleSystem* particleSystem) : device(device), particleSystem(particleSystem) {

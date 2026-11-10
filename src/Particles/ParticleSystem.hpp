@@ -27,6 +27,8 @@ namespace gsim {
 		enum SimulationAlgorithm {
 			/// @brief The direct-sum method, calculating every interaction between particles.
 			SIMULATION_ALGORITHM_DIRECT_SUM,
+			/// @brief The Barnes-Hut algorithm, organizing all particles in a dynamic quadtree.
+			SIMULATION_ALGORITHM_BARNES_HUT_DYNAMIC,
 			/// @brief The Barnes-Hut algorithm, organizing all particles in a fixed size quadtree.
 			SIMULATION_ALGORITHM_BARNES_HUT_FIXED,
 			/// @brief The number of implemented simulation algorithms.
@@ -96,6 +98,11 @@ namespace gsim {
 		/// @return The number of particles in the system, aligned for easy usage by the simulation.
 		size_t GetAlignedParticleCount() const {
 			return alignedParticleCount;
+		}
+		/// @brief Gets the total number of particles available in the particle buffers.
+		/// @return The total number of particles available in the particle buffers.
+		size_t GetBufferSize() const {
+			return bufferSize;
 		}
 		/// @brief Gets the gravitational constant used for the simulation.
 		/// @return The gravitational constant used for the simulation.
@@ -201,6 +208,7 @@ namespace gsim {
 
 		size_t particleCount;
 		size_t alignedParticleCount;
+		size_t bufferSize;
 		float gravitationalConst;
 		float simulationTime;
 		float simulationSpeed;

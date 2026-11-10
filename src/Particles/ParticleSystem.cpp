@@ -1,5 +1,6 @@
 #include "ParticleSystem.hpp"
 #include "Debug/Exception.hpp"
+#include "Simulation/BarnesHutDynamic/BarnesHutDynamicSimulation.hpp"
 #include "Simulation/BarnesHutFixed/BarnesHutFixedSimulation.hpp"
 #include "Simulation/Direct/DirectSimulation.hpp"
 #include <stdint.h>
@@ -224,7 +225,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.size = alignedParticleCount * sizeof(Vec2),
+			.size = bufferSize * sizeof(Vec2),
 			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			.sharingMode = (device->GetQueueFamilyIndexArraySize() == 1) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT,
 			.queueFamilyIndexCount = device->GetQueueFamilyIndexArraySize(),
@@ -236,7 +237,7 @@ namespace gsim {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.size = alignedParticleCount * sizeof(float),
+			.size = bufferSize * sizeof(float),
 			.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			.sharingMode = (device->GetQueueFamilyIndexArraySize() == 1) ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT,
 			.queueFamilyIndexCount = device->GetQueueFamilyIndexArraySize(),
@@ -436,27 +437,13 @@ namespace gsim {
 
 	// Public functions
 	ParticleSystem::ParticleSystem(VulkanDevice* device, const char* filePath, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float simulationSize, float accuracyParameter, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(0), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen), simulationSize(simulationSize), accuracyParameter(accuracyParameter) {
-		// Get the particle count alignment
-		size_t particleCountAlignment;
-		switch(simulationAlgorithm) {
-		case SIMULATION_ALGORITHM_DIRECT_SUM:
-			particleCountAlignment = DirectSimulation::GetRequiredParticleAlignment();
-			break;
-		case SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
-			particleCountAlignment = BarnesHutFixedSimulation::GetRequiredParticleAlignment();
-			break;
-		default:
-			GSIM_THROW_EXCEPTION("Invalid simulation algorithm requested!");
-			break;
-		}
-
 		// Open the given file
 		FILE* fileInput = fopen(filePath, "r");
 		if(!fileInput)
 			GSIM_THROW_EXCEPTION("Failed to open particle input file!");
 		
 		// Allocate a dynamic particle array
-		size_t particleCapacity = particleCountAlignment;
+		size_t particleCapacity = 4096;
 		Particle* particles = (Particle*)malloc(sizeof(Particle) * particleCapacity);
 		if(!particles)
 			GSIM_THROW_EXCEPTION("Failed to allocate particle array!");
@@ -487,8 +474,23 @@ namespace gsim {
 		if(!particleCount)
 			GSIM_THROW_EXCEPTION("The particle input file must contain at least one valid particle!");
 		
-		// Set the aligned particle count
-		alignedParticleCount = (particleCount + particleCountAlignment - 1) & ~(particleCountAlignment - 1);
+		// Get the aligned particle count and buffer size
+		switch(simulationAlgorithm) {
+		case SIMULATION_ALGORITHM_DIRECT_SUM:
+			alignedParticleCount = DirectSimulation::GetAlignedParticleCount(particleCount);
+			bufferSize = DirectSimulation::GetBufferSize(alignedParticleCount);
+			break;
+		case SIMULATION_ALGORITHM_BARNES_HUT_DYNAMIC:
+			alignedParticleCount = BarnesHutDynamicSimulation::GetAlignedParticleCount(particleCount);
+			bufferSize = BarnesHutDynamicSimulation::GetBufferSize(alignedParticleCount);
+			break;
+		case SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
+			alignedParticleCount = BarnesHutFixedSimulation::GetAlignedParticleCount(particleCount);
+			bufferSize = BarnesHutFixedSimulation::GetBufferSize(alignedParticleCount);
+			break;
+		default:
+			GSIM_THROW_EXCEPTION("Invalid simulation algorithm requested!");
+		}
 
 		// Fill the remaining particle infos
 		for(size_t i = particleCount; i != alignedParticleCount; ++i)
@@ -504,20 +506,6 @@ namespace gsim {
 		free(particles);
 	}
 	ParticleSystem::ParticleSystem(VulkanDevice* device, size_t particleCount, GenerateType generateType, float generateSize, float minMass, float maxMass, float gravitationalConst, float simulationTime, float simulationSpeed, float softeningLen, float simulationSize, float accuracyParameter, SimulationAlgorithm simulationAlgorithm) : device(device), particleCount(particleCount), gravitationalConst(gravitationalConst), simulationTime(simulationTime), simulationSpeed(simulationSpeed), softeningLen(softeningLen), simulationSize(simulationSize), accuracyParameter(accuracyParameter) {
-		// Get the particle count alignment
-		size_t particleCountAlignment;
-		switch(simulationAlgorithm) {
-		case SIMULATION_ALGORITHM_DIRECT_SUM:
-			particleCountAlignment = DirectSimulation::GetRequiredParticleAlignment();
-			break;
-		case SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
-			particleCountAlignment = BarnesHutFixedSimulation::GetRequiredParticleAlignment();
-			break;
-		default:
-			GSIM_THROW_EXCEPTION("Invalid simulation algorithm requested!");
-			break;
-		}
-
 		// Round the particle count down to the nearest even integer if the generate type is set to GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION
 		if(generateType == GENERATE_TYPE_SYMMETRICAL_GALAXY_COLLISION) {
 			particleCount &= ~1;
@@ -527,9 +515,24 @@ namespace gsim {
 		// Throw an exception if there are no particles in the system
 		if(!particleCount)
 			GSIM_THROW_EXCEPTION("The simulation must contain at least one particle!");
-
-		// Set the aligned particle count
-		alignedParticleCount = (particleCount + particleCountAlignment - 1) & ~(particleCountAlignment - 1);
+		
+		// Get the aligned particle count and buffer size
+		switch(simulationAlgorithm) {
+		case SIMULATION_ALGORITHM_DIRECT_SUM:
+			alignedParticleCount = DirectSimulation::GetAlignedParticleCount(particleCount);
+			bufferSize = DirectSimulation::GetBufferSize(alignedParticleCount);
+			break;
+		case SIMULATION_ALGORITHM_BARNES_HUT_DYNAMIC:
+			alignedParticleCount = BarnesHutDynamicSimulation::GetAlignedParticleCount(particleCount);
+			bufferSize = BarnesHutDynamicSimulation::GetBufferSize(alignedParticleCount);
+			break;
+		case SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
+			alignedParticleCount = BarnesHutFixedSimulation::GetAlignedParticleCount(particleCount);
+			bufferSize = BarnesHutFixedSimulation::GetBufferSize(alignedParticleCount);
+			break;
+		default:
+			GSIM_THROW_EXCEPTION("Invalid simulation algorithm requested!");
+		}
 
 		// Allocate the particle array
 		Particle* particles = (Particle*)malloc(alignedParticleCount * sizeof(Particle));

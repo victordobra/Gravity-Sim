@@ -5,6 +5,7 @@
 #include "Particles/Particle.hpp"
 #include "Particles/ParticleSystem.hpp"
 #include "Platform/Window.hpp"
+#include "Simulation/BarnesHutDynamic/BarnesHutDynamicSimulation.hpp"
 #include "Simulation/BarnesHutFixed/BarnesHutFixedSimulation.hpp"
 #include "Simulation/Direct/DirectSimulation.hpp"
 #include "Simulation/Direct/DirectSimulation.hpp"
@@ -41,6 +42,7 @@ const char* const ARGS_HELP =
 	"\t--accuracy-parameter: The accuracy parameter used to calibrate force approximation. Only used for Barnes-Hut simulations. Defaulted to 1.\n"
 	"\t--simulation-algorithm: The simulation algorithm used to calculate the gravitational forces. One of the following options:\n"
 	"\t\tdirect-sum: The direct-sum method, calculating every interaction between particles.\n"
+	"\t\tbarnes-hut-dynamic: The Barnes-Hut algorithm, organizing all particles in a dynamic quadtree.\n"
 	"\t\tbarnes-hut-fixed: The Barnes-Hut algorithm, organizing all particles in a fixed size quadtree.\n"
 	"\t--simulation-count: The number of simulations to run before closing the program. No limit will be used if this parameter isn't specified.\n"
 	"Available options:\n"
@@ -202,6 +204,8 @@ int main(int argc, char** args) {
 		} else if(!strncmp(args[i], "--simulation-algorithm=", 23)) {
 			if(!strcmp(args[i] + 23, "direct-sum")) {
 				programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM;
+			} else if(!strcmp(args[i] + 23, "barnes-hut-dynamic")) {
+				programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT_DYNAMIC;
 			} else if(!strcmp(args[i] + 23, "barnes-hut-fixed")) {
 				programInfo.simulationAlgorithm = gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT_FIXED;
 			}
@@ -258,6 +262,9 @@ int main(int argc, char** args) {
 			switch(programInfo.simulationAlgorithm) {
 			case gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM:
 				programInfo.simulation = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
+				break;
+			case gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT_DYNAMIC:
+				programInfo.simulation = new gsim::BarnesHutDynamicSimulation(programInfo.device, programInfo.particleSystem);
 				break;
 			case gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
 				programInfo.simulation = new gsim::BarnesHutFixedSimulation(programInfo.device, programInfo.particleSystem);
@@ -353,6 +360,9 @@ int main(int argc, char** args) {
 			switch(programInfo.simulationAlgorithm) {
 			case gsim::ParticleSystem::SIMULATION_ALGORITHM_DIRECT_SUM:
 				programInfo.simulation = new gsim::DirectSimulation(programInfo.device, programInfo.particleSystem);
+				break;
+			case gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT_DYNAMIC:
+				programInfo.simulation = new gsim::BarnesHutDynamicSimulation(programInfo.device, programInfo.particleSystem);
 				break;
 			case gsim::ParticleSystem::SIMULATION_ALGORITHM_BARNES_HUT_FIXED:
 				programInfo.simulation = new gsim::BarnesHutFixedSimulation(programInfo.device, programInfo.particleSystem);

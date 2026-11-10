@@ -50,6 +50,24 @@ namespace gsim {
 		/// @brief The vector's W component.
 		uint32_t w;
 	};
+	/// @brief A two-dimensional vector of signed integers.
+	struct Vec2i {
+		/// @brief The vector's X component.
+		int32_t x;
+		/// @brief The vector's Y component.
+		int32_t y;
+	};
+	/// @brief A four-dimensional vector of signed integers.
+	struct Vec4i {
+		/// @brief The vector's X component.
+		int32_t x;
+		/// @brief The vector's Y component.
+		int32_t y;
+		/// @brief The vector's Z component.
+		int32_t z;
+		/// @brief The vector's W component.
+		int32_t w;
+	};
 
 	/// @brief A struct containing the relevand info about a particle.
 	struct GSIM_ALIGNAS(sizeof(Vec2)) Particle {
